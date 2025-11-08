@@ -17,7 +17,7 @@ const Subscription = () => {
 
   // 🔹 Handle quote creation
   const handleQuote = async (plan) => {
-    console.log(plan, "plan");
+    console.log(plan, "planeeeeeeeeeeeeeeeeeeeeeee");
     try {
       const data = await upsertQuote(plan);
 
