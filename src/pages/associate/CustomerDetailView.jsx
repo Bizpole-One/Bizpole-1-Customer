@@ -31,7 +31,8 @@ const CustomerDetailView = () => {
         const fetchCustomerDetails = async () => {
             setLoading(true);
             try {
-                const response = await CustomerApi.getCustomerById(id, 9);
+                const associateId = localStorage.getItem('AssociateID');
+                const response = await CustomerApi.getCustomerById(id, associateId);
                 if (response.data.success) {
                     setCustomer(response.data.data);
                 } else {

@@ -136,7 +136,10 @@ const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                 setCreatedAssociateId(response.data.AssociateID);
 
                 if (response.token && response.user) {
-                    setSecureItem("token", response.token);
+                    localStorage.setItem("token", response.token);
+                    localStorage.setItem('EmployeeID', response.user.EmployeeID);
+                    localStorage.setItem('FranchiseeID', response.user.FranchiseeID);
+                    localStorage.setItem('AssociateID', response.user.id);
                     setSecureItem("user", response.user);
                 }
 
