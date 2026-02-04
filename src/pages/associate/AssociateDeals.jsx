@@ -53,12 +53,17 @@ const AssociateDeals = () => {
 
             console.log("deal", deal);
 
+            const user = getSecureItem("user") || {};
+            const AssociateID = localStorage.getItem("AssociateID");
+
             // Transform deal data into quote payload format
             const quotePayload = {
                 id: null, // For new quote creation
                 packageId: null, // Deals may not have packages
                 PackageName: null,
                 name: deal.name,
+                isAssociate: 1,
+                AssociateID: AssociateID,
                 services: deal.DealServices?.map(service => {
                     console.log('service from deal:', service);
                     return {

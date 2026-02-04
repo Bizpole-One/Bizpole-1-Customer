@@ -17,13 +17,14 @@ const AssociateQuotes = () => {
         try {
             const user = getSecureItem("user") || {};
             const companyId = user.Companies?.[0]?.CompanyID || null;
+            const AssociateID = localStorage.getItem("AssociateID");
 
             // Fetch quotes using the getLatestQuotes endpoint
             const response = await axiosInstance.post('/getLatestQuotes', {
-                params: {
-                    CompanyID: companyId,
-                    // Add more filters as needed
-                }
+                CompanyID: companyId,
+                AssociateID: AssociateID,
+                isAssociate: true
+                // Add more filters as needed
             });
             console.log("response", response.data);
 
