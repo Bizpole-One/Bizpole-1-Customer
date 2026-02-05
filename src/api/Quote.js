@@ -88,11 +88,11 @@ export const upsertQuote = async (plan) => {
     const companyPayload = SelectedCompany && SelectedCompany.CompanyID != null
       ? SelectedCompany
       : (user?.Companies && user.Companies[0])
-      ? {
+        ? {
           CompanyID: user.Companies[0].CompanyID,
           CompanyName: user.Companies[0].BusinessName || user.Companies[0].CompanyName || "",
         }
-      : SelectedCompany;
+        : SelectedCompany;
 
     // Build payload
     const payload = {
@@ -101,19 +101,19 @@ export const upsertQuote = async (plan) => {
       SelectedCompany: companyPayload,
       SelectedCustomer: (user && user.CustomerID)
         ? {
-            CustomerID: user.CustomerID,
-            CustomerName: [user.FirstName, user.LastName].filter(Boolean).join(" ").trim() || "John Doe",
-          }
+          CustomerID: user.CustomerID,
+          CustomerName: [user.FirstName, user.LastName].filter(Boolean).join(" ").trim() || "John Doe",
+        }
         : {
-            CustomerID: 2,
-            CustomerName: "John Doe",
-          },
+          CustomerID: 2,
+          CustomerName: "John Doe",
+        },
       QuoteCRE: {
         EmployeeID: agentId || 9,
         EmployeeName: agentName || "",
       },
       FranchiseeID: franchiseeId || 43,
-      SourceOfSale: "Website",
+      SourceOfSale: plan.isAssociate ? "Associate" : "Website",
       Remarks: "Generated from subscription page",
       IsIndividual: 0,
       PackageID: plan.id || plan.packageId,
@@ -127,20 +127,20 @@ export const upsertQuote = async (plan) => {
           s.ProfessionalFee != null
             ? parseFloat(s.ProfessionalFee)
             : s.ProfessionalFeeYearly != null
-            ? parseFloat(s.ProfessionalFeeYearly)
-            : 1000,
+              ? parseFloat(s.ProfessionalFeeYearly)
+              : 1000,
         VendorFee:
           s.VendorFee != null
             ? parseFloat(s.VendorFee)
             : s.VendorFeeYearly != null
-            ? parseFloat(s.VendorFeeYearly)
-            : 500,
+              ? parseFloat(s.VendorFeeYearly)
+              : 500,
         GovtFee:
           s.GovernmentFee != null
             ? parseFloat(s.GovernmentFee)
             : s.GovernmentFeeYearly != null
-            ? parseFloat(s.GovernmentFeeYearly)
-            : 200,
+              ? parseFloat(s.GovernmentFeeYearly)
+              : 200,
         ContractorFee: 0,
         GSTPercent: 18,
         Discount: 0,
@@ -149,8 +149,8 @@ export const upsertQuote = async (plan) => {
           s.TotalFee != null
             ? parseFloat(s.TotalFee)
             : s.TotalFeeYearly != null
-            ? parseFloat(s.TotalFeeYearly)
-            : 1700,
+              ? parseFloat(s.TotalFeeYearly)
+              : 1700,
         AdvanceAmount: 500,
         PendingAmount: 1200,
       })),
@@ -158,16 +158,18 @@ export const upsertQuote = async (plan) => {
       MailQuoteCustomers: [
         (user && user.CustomerID)
           ? {
-              CustomerID: user.CustomerID,
-              CustomerName: `${user.FirstName || ""} ${user.LastName || ""}`.trim() || "John Doe",
-              Email: user.Email || email || "john@example.com",
-            }
+            CustomerID: user.CustomerID,
+            CustomerName: `${user.FirstName || ""} ${user.LastName || ""}`.trim() || "John Doe",
+            Email: user.Email || email || "john@example.com",
+          }
           : {
-              CustomerID: 2,
-              CustomerName: "John Doe",
-              Email: "john@example.com",
-            },
+            CustomerID: 2,
+            CustomerName: "John Doe",
+            Email: "john@example.com",
+          },
       ],
+      isAssociate: plan.isAssociate,
+      AssociateID: plan.AssociateID,
     };
 
     // debug log (remove later)

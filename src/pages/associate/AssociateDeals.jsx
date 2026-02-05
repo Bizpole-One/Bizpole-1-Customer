@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, Search, Filter, Loader2, MoreVertical, ExternalLin
 import DealsApi from '../../api/DealsApi';
 import { getSecureItem } from '../../utils/secureStorage';
 import { format } from 'date-fns';
+import { upsertQuote } from '../../api/Quote';
 
 const AssociateDeals = () => {
     const navigate = useNavigate();
@@ -13,6 +14,7 @@ const AssociateDeals = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [creatingQuote, setCreatingQuote] = useState(null); // Track which deal is being converted
 
     const fetchDeals = async () => {
         setLoading(true);
@@ -43,6 +45,53 @@ const AssociateDeals = () => {
 
     const handleDealSuccess = () => {
         fetchDeals();
+    };
+
+    const handleCreateQuote = async (deal) => {
+        setCreatingQuote(deal.id);
+        try {
+
+            console.log("deal", deal);
+
+            const user = getSecureItem("user") || {};
+            const AssociateID = localStorage.getItem("AssociateID");
+
+            // Transform deal data into quote payload format
+            const quotePayload = {
+                id: null, // For new quote creation
+                packageId: null, // Deals may not have packages
+                PackageName: null,
+                name: deal.name,
+                isAssociate: 1,
+                AssociateID: AssociateID,
+                services: deal.DealServices?.map(service => {
+                    console.log('service from deal:', service);
+                    return {
+                        ServiceID: service.ServiceID,
+                        ServiceName: service.ServiceName || service.name,
+                        ProfessionalFee: service.ProfessionalFee || 0,
+                        VendorFee: service.VendorFee || 0,
+                        ContractFee: service.ContractFee || 0,
+                        GovernmentFee: service.GovernmentFee || service.GovtFee || 0,
+                        TotalFee: service.TotalFee || service.Total || 0,
+                        StateID: service.StateID || null,
+                        StateName: service.StateName || null
+                    };
+                }) || [],
+            };
+
+            const result = await upsertQuote(quotePayload);
+
+            if (result) {
+                alert(`Quote created successfully! Quote Code: ${result.QuoteCode || 'Generated'}`);
+                navigate('/associate/quotes');
+            }
+        } catch (err) {
+            console.error('Error creating quote from deal:', err);
+            alert('Failed to create quote. Please try again.');
+        } finally {
+            setCreatingQuote(null);
+        }
     };
 
     const getStatusColor = (status) => {
@@ -193,8 +242,19 @@ const AssociateDeals = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="bg-amber-100 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-200 transition-colors whitespace-nowrap">
-                                                    Create Quote
+                                                <button
+                                                    onClick={() => handleCreateQuote(deal)}
+                                                    disabled={creatingQuote === deal.id}
+                                                    className="bg-amber-100 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-200 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                                                >
+                                                    {creatingQuote === deal.id ? (
+                                                        <>
+                                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                                            Creating...
+                                                        </>
+                                                    ) : (
+                                                        'Create Quote'
+                                                    )}
                                                 </button>
                                                 <button className="p-2 text-slate-400 hover:text-[#4b49ac] hover:bg-slate-100 rounded-lg transition-all">
                                                     <Edit2 className="w-4 h-4" />

@@ -23,6 +23,10 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
         preferredLanguage: "",
         followupNote: "",
         closureDate: "",
+        // Service Details
+        serviceCategory: "",
+        serviceState: "", // State where you need service
+        selectedServices: [], // Array of selected service IDs
         // Company Details
         companyName: "",
         companyGST: "",
@@ -35,6 +39,10 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
     });
 
     const [availableCompanyDistricts, setAvailableCompanyDistricts] = useState([]);
+    const [serviceCategories, setServiceCategories] = useState([]);
+    const [availableServices, setAvailableServices] = useState([]);
+    const [availableStates, setAvailableStates] = useState([]); // States for service location
+    const [servicePricing, setServicePricing] = useState([]); // Pricing data for selected services
 
     useEffect(() => {
         if (formData.state) {
@@ -58,6 +66,120 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
         }
     }, [formData.companyState]);
 
+    // Fetch service categories on component mount
+    useEffect(() => {
+        const fetchServiceCategories = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/service-category?limit=100', {
+                    headers: {
+                        'Authorization': `Bearer ${getSecureItem('token')}`
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    setServiceCategories(data.data || []);
+                }
+            } catch (error) {
+                console.error('Error fetching service categories:', error);
+            }
+        };
+
+        if (isOpen) {
+            fetchServiceCategories();
+        }
+    }, [isOpen]);
+
+    // Fetch services when service category changes
+    useEffect(() => {
+        const fetchServices = async () => {
+            if (!formData.serviceCategory) {
+                setAvailableServices([]);
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3000/service-categories/${formData.serviceCategory}?limit=100`, {
+                    headers: {
+                        'Authorization': `Bearer ${getSecureItem('token')}`
+                    }
+                });
+                const data = await response.json();
+                if (data.success && data.data) {
+                    setAvailableServices(data.data.Services || []);
+                }
+            } catch (error) {
+                console.error('Error fetching services:', error);
+                setAvailableServices([]);
+            }
+        };
+
+        fetchServices();
+    }, [formData.serviceCategory]);
+
+    // Fetch states on component mount
+    useEffect(() => {
+        const fetchStates = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/states');
+                const data = await response.json();
+                if (data.success) {
+                    setAvailableStates(data.data || []);
+                }
+            } catch (error) {
+                console.error('Error fetching states:', error);
+            }
+        };
+
+        if (isOpen) {
+            fetchStates();
+        }
+    }, [isOpen]);
+
+    // Fetch service pricing when state and services are selected
+    useEffect(() => {
+        const fetchServicePricing = async () => {
+            if (!formData.serviceState || !formData.selectedServices || formData.selectedServices.length === 0) {
+                setServicePricing([]);
+                return;
+            }
+
+            try {
+                // Find the selected state ID
+                const selectedState = availableStates.find(s => s.state_name === formData.serviceState);
+                if (!selectedState) {
+                    console.log('State not found:', formData.serviceState);
+                    return;
+                }
+
+                const response = await fetch('http://localhost:3000/service-price-currency/bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getSecureItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        StateID: selectedState.ID,
+                        ServiceIDs: formData.selectedServices,
+                        isIndividual: 1, // For individual pricing
+                        packageId: null,
+                        yearly: 0
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    console.log('Service pricing fetched:', data.data);
+                    setServicePricing(data.data || []);
+                }
+            } catch (error) {
+                console.error('Error fetching service pricing:', error);
+                setServicePricing([]);
+            }
+        };
+
+        fetchServicePricing();
+    }, [formData.serviceState, formData.selectedServices, availableStates]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
@@ -65,6 +187,18 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
             setErrors((prev) => {
                 const newErrors = { ...prev };
                 delete newErrors[name];
+                return newErrors;
+            });
+        }
+    };
+
+    const handleServiceChange = (e) => {
+        const selectedOptions = Array.from(e.target.selectedOptions, option => parseInt(option.value));
+        setFormData((prev) => ({ ...prev, selectedServices: selectedOptions }));
+        if (errors.selectedServices) {
+            setErrors((prev) => {
+                const newErrors = { ...prev };
+                delete newErrors.selectedServices;
                 return newErrors;
             });
         }
@@ -109,6 +243,29 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
         setIsSubmitting(true);
         try {
             const user = getSecureItem("user") || {};
+
+            // Map selected services with their pricing details
+            const servicesPayload = formData.selectedServices.map(serviceId => {
+                const service = availableServices.find(s => s.ServiceID === serviceId);
+                const pricing = servicePricing.find(p => p.ServiceID === serviceId);
+
+                // Find the selected state ID
+                const selectedState = availableStates.find(s => s.state_name === formData.serviceState);
+
+                return {
+                    ServiceID: serviceId,
+                    ServiceName: service?.ServiceName || pricing?.ServiceName || '',
+                    CategoryID: formData.serviceCategory,
+                    StateID: selectedState?.ID || null,
+                    StateName: formData.serviceState || null,
+                    ProfessionalFee: pricing?.ProfessionalFee || 0,
+                    VendorFee: pricing?.VendorFee || 0,
+                    ContractFee: pricing?.ContractFee || 0,
+                    GovernmentFee: pricing?.GovernmentFee || 0,
+                    TotalFee: pricing?.TotalFee || pricing?.Total || 0
+                };
+            });
+
             const payload = {
                 leadId: 10, // Since it's a new deal creation not from a lead, we might need a dummy or the backend should handle it
                 customer: {
@@ -135,6 +292,7 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
                     preferredLanguage: formData.companyPreferredLanguage,
                     isAssociate: true
                 },
+                services: servicesPayload, // Add services to payload
                 franchiseeId: user.FranchiseeID || 1,
                 employeeId: user.EmployeeID || 9,
                 isAssociate: true,
@@ -328,6 +486,64 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
                                         />
                                     </div>
                                     {errors.closureDate && <p className="text-xs text-red-500 mt-1">{errors.closureDate}</p>}
+                                </div>
+
+                                <div className="relative">
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Service Category</label>
+                                    <select
+                                        name="serviceCategory"
+                                        value={formData.serviceCategory}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] appearance-none"
+                                    >
+                                        <option value="">Select Service Category</option>
+                                        {serviceCategories.map((category) => (
+                                            <option key={category.CategoryID} value={category.CategoryID}>
+                                                {category.CategoryName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
+                                    {errors.serviceCategory && <p className="text-xs text-red-500 mt-1">{errors.serviceCategory}</p>}
+                                </div>
+
+                                <div className="relative">
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">State where you need Service *</label>
+                                    <select
+                                        name="serviceState"
+                                        value={formData.serviceState}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] appearance-none"
+                                    >
+                                        <option value="">Select State</option>
+                                        {availableStates.map((state) => (
+                                            <option key={state.ID} value={state.state_name}>
+                                                {state.state_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
+                                    {errors.serviceState && <p className="text-xs text-red-500 mt-1">{errors.serviceState}</p>}
+                                </div>
+
+                                <div className="relative">
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Services (Hold Ctrl/Cmd to select multiple)</label>
+                                    <select
+                                        multiple
+                                        name="selectedServices"
+                                        value={formData.selectedServices}
+                                        onChange={handleServiceChange}
+                                        disabled={!formData.serviceCategory}
+                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] min-h-[120px] disabled:bg-gray-50"
+                                    >
+                                        {availableServices.map((service) => (
+                                            <option key={service.ServiceID} value={service.ServiceID}>
+                                                {service.ServiceName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {errors.selectedServices && <p className="text-xs text-red-500 mt-1">{errors.selectedServices}</p>}
+                                    {!formData.serviceCategory && <p className="text-xs text-gray-500 mt-1">Please select a service category first</p>}
                                 </div>
 
                                 <div className="flex justify-end pt-4">
