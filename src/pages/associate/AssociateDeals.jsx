@@ -16,6 +16,26 @@ const AssociateDeals = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [creatingQuote, setCreatingQuote] = useState(null); // Track which deal is being converted
 
+    const [companyNames, setCompanyNames] = useState({});
+
+    const fetchCompanyNames = async (dealsList) => {
+        const uniqueCompanyIds = [...new Set(dealsList.map(d => d.CompanyID).filter(id => id && !companyNames[id]))];
+
+        for (const id of uniqueCompanyIds) {
+            try {
+                const response = await DealsApi.getCompanyDetails(id);
+                if (response.success && response.data) {
+                    setCompanyNames(prev => ({
+                        ...prev,
+                        [id]: response.data.BusinessName
+                    }));
+                }
+            } catch (err) {
+                console.error(`Error fetching company name for ${id}`, err);
+            }
+        }
+    };
+
     console.log("deals", deals);
 
     const fetchDeals = async () => {
@@ -29,7 +49,9 @@ const AssociateDeals = () => {
                 AssociateID: user.id || null
             });
             if (result.success) {
-                setDeals(result.data || []);
+                const dealsData = result.data || [];
+                setDeals(dealsData);
+                fetchCompanyNames(dealsData);
             } else {
                 setError(result.message || "Failed to fetch deals");
             }
@@ -52,57 +74,19 @@ const AssociateDeals = () => {
     const handleCreateQuote = async (deal) => {
         setCreatingQuote(deal.id);
         try {
+            const result = await DealsApi.requestQuote(deal.id);
 
-            console.log("deal", deal);
-
-            const user = getSecureItem("user") || {};
-            const AssociateID = localStorage.getItem("AssociateID");
-            const token = localStorage.getItem("partnerToken"); // Use partner token
-            if (!token) {
-                console.error("Partner token is missing. Authorization failed.");
-                return;
-            }
-
-            // Transform deal data into quote payload format
-            const quotePayload = {
-                id: null, // For new quote creation
-                packageId: null, // Deals may not have packages
-                PackageName: null,
-                name: deal.name,
-                isAssociate: 1,
-                AssociateID: parseInt(AssociateID),
-                SelectedCompany: {
-                    CompanyID: deal.CompanyID || 1,
-                    CompanyName: deal.CompanyName || "Default Company"
-                },
-                services: deal.DealServices?.map(service => {
-                    console.log('service from deal:', service);
-                    return {
-                        ServiceID: service.ServiceID,
-                        ServiceName: service.ServiceName || service.name,
-                        ProfessionalFee: service.ProfessionalFee || 0,
-                        VendorFee: service.VendorFee || 0,
-                        ContractFee: service.ContractFee || 0,
-                        GovernmentFee: service.GovernmentFee || service.GovtFee || 0,
-                        TotalFee: service.TotalFee || service.Total || 0,
-                        StateID: service.StateID || null,
-                        StateName: service.StateName || null
-                    };
-                }) || [],
-            };
-
-            console.log("BBBBB", { quotePayload });
-
-
-            const result = await upsertQuote(quotePayload);
-
-            if (result) {
-                alert(`Quote created successfully! Quote Code: ${result.QuoteCode || 'Generated'}`);
-                navigate('/associate/quotes');
+            if (result.success) {
+                // Update local state to reflect the change
+                setDeals(prev => prev.map(d =>
+                    d.id === deal.id ? { ...d, associate_request: 1 } : d
+                ));
+            } else {
+                alert('Failed to request quote: ' + (result.message || 'Unknown error'));
             }
         } catch (err) {
-            console.error('Error creating quote from deal:', err);
-            alert('Failed to create quote. Please try again.');
+            console.error('Error requesting quote from deal:', err);
+            alert('Failed to request quote. Please try again.');
         } finally {
             setCreatingQuote(null);
         }
@@ -167,6 +151,8 @@ const AssociateDeals = () => {
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Company</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Closure Date</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Services</th>
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Service Category</th>
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deal Type</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Mobile</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
                             </tr>
@@ -242,7 +228,7 @@ const AssociateDeals = () => {
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-slate-600">
-                                                {deal.CompanyName || "--"}
+                                                {companyNames[deal.CompanyID] || deal.CompanyName || "--"}
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-slate-600">
@@ -252,7 +238,28 @@ const AssociateDeals = () => {
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-slate-600 max-w-[200px] truncate">
-                                                {deal.serviceName || "--"}
+                                                {deal.packageName ? (
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-[#4b49ac] text-[12px]">
+                                                            {deal.packageName}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {deal.serviceNames || "--"}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    deal.serviceNames || deal.serviceName || "--"
+                                                )}
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm text-slate-600">
+                                                {deal.serviceCategory || "--"}
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm text-slate-600">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${deal.dealType === 'Package' ? 'bg-purple-50 text-purple-600 border border-purple-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
+                                                    {deal.dealType || "Individual"}
+                                                </span>
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-slate-500 font-mono tracking-tighter">
@@ -264,16 +271,19 @@ const AssociateDeals = () => {
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => handleCreateQuote(deal)}
-                                                        disabled={creatingQuote === deal.id}
-                                                        className="bg-amber-100 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-200 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                                                        disabled={creatingQuote === deal.id || deal.associate_request === 1}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-1.5 ${deal.associate_request === 1
+                                                            ? "bg-slate-100 text-slate-500"
+                                                            : "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                                                            }`}
                                                     >
                                                         {creatingQuote === deal.id ? (
                                                             <>
                                                                 <Loader2 className="w-3 h-3 animate-spin" />
-                                                                Creating...
+                                                                Requesting...
                                                             </>
                                                         ) : (
-                                                            "Create Quote"
+                                                            deal.associate_request === 1 ? "Requested" : "Request Quote"
                                                         )}
                                                     </button>
 

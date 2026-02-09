@@ -73,10 +73,37 @@ export const getDealById = async (id) => {
     }
 };
 
+/**
+ * Get company details by ID
+ * @param {string|number} companyId - Company ID
+ * @returns {Promise<Object>} - { success, data }
+ */
+export const getCompanyDetails = async (companyId) => {
+    try {
+        const response = await axiosInstance.post("/company/get-details", { CompanyId: companyId });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching company details:", error);
+        throw error;
+    }
+};
+
+export const requestQuote = async (id) => {
+    try {
+        const response = await axiosInstance.post("/request-quote", { id, associate_request: 1 });
+        return response.data;
+    } catch (error) {
+        console.error("Error requesting quote:", error);
+        throw error;
+    }
+};
+
 export default {
     convertToDeal,
     listDeals,
     listAssociateCustomers,
     listAssociateCompanies,
     getDealById,
+    getCompanyDetails,
+    requestQuote,
 };
