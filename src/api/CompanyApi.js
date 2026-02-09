@@ -55,26 +55,59 @@ export const getCompanyById = async (id) => {
 };
 
 /**
+ * 🔹 Get Company Details by ID
+ * Example payload:
+ * {
+ *   "CompanyId": 613
+ * }
+ */
+export const getCompanyDetails = async (companyId) => {
+  try {
+    if (!companyId) {
+      throw new Error("CompanyId is required to fetch company details");
+    }
+
+    const response = await axiosInstance.post("/company/get-details", {
+      CompanyId: companyId,
+    });
+
+    console.log("✅ Response from getCompanyDetails:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error in getCompanyDetails:", error);
+    throw error;
+  }
+};
+
+/**
  * 🔹 Add or Update Registration & Compliance Status
  */
 export const upsertRegistrationStatus = async (registrationStatusData) => {
   try {
     // 🧠 First try to get from secure storage
     let CompanyID = getSecureItem("CompanyId");
-
-    // 🧾 Backup: if not found, try from localStorage directly
     if (!CompanyID) {
       CompanyID = localStorage.getItem("CompanyId");
       console.warn("⚠️ Fallback: Retrieved CompanyId from localStorage:", CompanyID);
     }
-
-    console.log("✅ Using CompanyID for registration status:", CompanyID);
-
     if (!CompanyID) throw new Error("CompanyId not found in secure storage or localStorage");
 
+    // If registrationStatusData is already a payload with CompanyID/registrationStatus, flatten it
+    let registrationStatus = registrationStatusData;
+    if (registrationStatusData && typeof registrationStatusData === 'object') {
+      if ('registrationStatus' in registrationStatusData) {
+        registrationStatus = registrationStatusData.registrationStatus;
+      }
+      // Remove CompanyID if present in registrationStatusData
+      if ('CompanyID' in registrationStatus) {
+        const { CompanyID: _omit, ...rest } = registrationStatus;
+        registrationStatus = rest;
+      }
+    }
+
     const payload = {
-      CompanyID,
-      registrationStatus: registrationStatusData,
+      CompanyID: Number(CompanyID),
+      registrationStatus
     };
 
     console.log("📤 Payload for upsertRegistrationStatus:", payload);

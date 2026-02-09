@@ -1,8 +1,23 @@
 import axiosInstance from "../axiosInstance";
 import { getSecureItem } from "../../utils/secureStorage";
 
+
+// 🔹 Fetch orders for a specific companyId (bypassing storage)
+
+
+
+
+
+export const getOrdersByCompanyId = async ({ companyId, limit = 10, page = 1, IsIndividual }) => {
+  if (!companyId) throw new Error("companyId is required");
+  const body = { companyId, limit, page };
+  if (typeof IsIndividual !== "undefined") body.IsIndividual = IsIndividual;
+  const response = await axiosInstance.post(`/order/company`, body);
+  return response.data;
+};
+
 // Helper: always get latest selectedCompany.CompanyID from secure storage
-const getCompanyIdFromStorage = () => {
+export const getCompanyIdFromStorage = () => {
   try {
     // Always check both localStorage and sessionStorage for latest value
     let raw = getSecureItem("selectedCompany");
@@ -11,7 +26,9 @@ const getCompanyIdFromStorage = () => {
     }
     if (raw) {
       const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (parsed && parsed.CompanyID) return parsed.CompanyID;
+      if (parsed && parsed.CompanyID) {
+        return parsed.CompanyID; // Return the CompanyID from selectedCompany
+      }
     }
     // Fallback: try from user object
     let userDataRaw = getSecureItem("user" || "partnerUser");
@@ -20,7 +37,7 @@ const getCompanyIdFromStorage = () => {
     }
     const userData = userDataRaw && typeof userDataRaw === "string" ? JSON.parse(userDataRaw) : userDataRaw;
     if (userData && userData.Companies && userData.Companies.length > 0) {
-      return userData.Companies[0].CompanyID;
+      return userData.Companies[0].CompanyID; // Return the first company ID as a fallback
     }
     return null;
   } catch (error) {
@@ -77,4 +94,29 @@ export const setSelectedCompany = (company) => {
   setShowCompanyDropdown(false);
   // Dispatch a custom event so order pages can reload
   window.dispatchEvent(new Event("company-switched"));
+};
+
+// 🔹 Fetch invoice for a specific order
+export const getInvoicesForOrder = async (orderId) => {
+  if (!orderId) throw new Error("orderId is required");
+  const response = await axiosInstance.post("/getinvoiceforservice", { orderId: orderId.toString() });
+  return response.data;
+};
+
+// New helper function to fetch orders and their invoices
+export const getOrdersWithInvoices = async (companyId) => {
+  if (!companyId) throw new Error("companyId is required");
+
+  // Fetch orders
+  const orders = await getOrdersByCompanyId({ companyId });
+
+  // Fetch invoices for each order
+  const ordersWithInvoices = await Promise.all(
+    orders.map(async (order) => {
+      const invoices = await getInvoicesForOrder(order.id);
+      return { ...order, invoices };
+    })
+  );
+
+  return ordersWithInvoices;
 };
