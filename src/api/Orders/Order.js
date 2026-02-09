@@ -31,9 +31,9 @@ export const getCompanyIdFromStorage = () => {
       }
     }
     // Fallback: try from user object
-    let userDataRaw = getSecureItem("user");
+    let userDataRaw = getSecureItem("user" || "partnerUser");
     if (!userDataRaw) {
-      userDataRaw = window.localStorage.getItem("user") || window.sessionStorage.getItem("user");
+      userDataRaw = window.localStorage.getItem("user" || "partnerUser" ) || window.sessionStorage.getItem("user" || "partnerUser");
     }
     const userData = userDataRaw && typeof userDataRaw === "string" ? JSON.parse(userDataRaw) : userDataRaw;
     if (userData && userData.Companies && userData.Companies.length > 0) {

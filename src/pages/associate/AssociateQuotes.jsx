@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Loader2, Eye, Download, Plus } from 'lucide-react';
+import { Search, Filter, Loader2, Eye, Download, Plus, Pencil, Trash2 } from 'lucide-react';
 import { getSecureItem } from '../../utils/secureStorage';
 import { format } from 'date-fns';
 import axiosInstance from '../../api/axiosInstance';
@@ -15,7 +15,7 @@ const AssociateQuotes = () => {
     const fetchQuotes = async () => {
         setLoading(true);
         try {
-            const user = getSecureItem("user") || {};
+            const user = getSecureItem("partnerUser") || {};
             const companyId = user.Companies?.[0]?.CompanyID || null;
             const AssociateID = localStorage.getItem("AssociateID");
 
@@ -95,100 +95,105 @@ const AssociateQuotes = () => {
 
             {/* Quotes Table */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
+                    <table className="w-full text-left border-collapse text-sm">
+
+                        {/* HEADER */}
                         <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">S.No</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Quote Code</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Quote Name</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Company</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Services</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Amount</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Created Date</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                            <tr className="bg-slate-100 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
+                                <th className="px-4 py-3">S.No</th>
+                                <th className="px-4 py-3">Quote ID</th>
+                                <th className="px-4 py-3">Quote Date</th>
+                                <th className="px-4 py-3">Company Name</th>
+                                <th className="px-4 py-3">Primary Customer</th>
+                                <th className="px-4 py-3">Origin</th>
+                                <th className="px-4 py-3">Services Type</th>
+                                <th className="px-4 py-3">Quote Cre</th>
+                                <th className="px-4 py-3">Quote Value</th>
+                                <th className="px-4 py-3">Quote Status</th>
+                                <th className="px-4 py-3">IsApproved</th>
+                                <th className="px-4 py-3">Ageing</th>
+                                <th className="px-4 py-3">Created By</th>
+                                <th className="px-4 py-3 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="9" className="px-6 py-20 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <Loader2 className="w-8 h-8 text-[#4b49ac] animate-spin" />
-                                            <p className="text-slate-500 font-medium">Loading quotes...</p>
-                                        </div>
+
+                        {/* BODY */}
+                        <tbody className="divide-y divide-slate-200">
+
+                            {filteredQuotes.map((quote, index) => (
+                                <tr
+                                    key={quote.QuoteID}
+                                    className="hover:bg-slate-50 transition"
+                                >
+
+                                    <td className="px-4 py-3">{index + 1}</td>
+
+                                    <td className="px-4 py-3 font-semibold text-slate-700">
+                                        {quote.QuoteCode}
                                     </td>
-                                </tr>
-                            ) : error ? (
-                                <tr>
-                                    <td colSpan="9" className="px-6 py-20 text-center">
-                                        <div className="max-w-xs mx-auto space-y-3">
-                                            <div className="bg-red-50 text-red-600 p-3 rounded-xl border border-red-100 text-sm">
-                                                {error}
-                                            </div>
-                                            <button
-                                                onClick={fetchQuotes}
-                                                className="text-[#4b49ac] font-semibold text-sm hover:underline"
-                                            >
-                                                Try Again
+
+                                    <td className="px-4 py-3">
+                                        {format(new Date(quote.QuoteDate), "dd/MM/yyyy")}
+                                    </td>
+
+                                    <td className="px-4 py-3 text-blue-600 underline cursor-pointer">
+                                        {quote.CompanyName}
+                                    </td>
+
+                                    <td className="px-4 py-3 text-blue-600 underline cursor-pointer">
+                                        {quote.PrimaryCustomer}
+                                    </td>
+
+                                    <td className="px-4 py-3">{quote.Origin || "-"}</td>
+
+                                    <td className="px-4 py-3">{quote.ServiceType}</td>
+
+                                    <td className="px-4 py-3">{quote.CreatedBy}</td>
+
+                                    <td className="px-4 py-3 font-medium">
+                                        ₹{Number(quote.TotalAmount).toLocaleString("en-IN")}
+                                    </td>
+
+                                    {/* STATUS BADGE */}
+                                    <td className="px-4 py-3">
+                                        <span
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md ${quote.QuoteStatus === "Draft"
+                                                ? "bg-gray-100 text-gray-600"
+                                                : "bg-emerald-100 text-emerald-700"
+                                                }`}
+                                        >
+                                            {quote.QuoteStatus}
+                                        </span>
+                                    </td>
+
+                                    <td className="px-4 py-3">
+                                        {quote.IsApproved ? "Yes" : "No"}
+                                    </td>
+
+                                    <td className="px-4 py-3">{quote.AgeingDays}</td>
+
+                                    <td className="px-4 py-3">{quote.CreatedBy}</td>
+
+                                    {/* ACTIONS */}
+                                    <td className="px-4 py-3 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button className="p-2 bg-slate-100 hover:bg-slate-200 rounded-md">
+                                                <Pencil className="w-4 h-4 text-slate-600" />
+                                            </button>
+
+                                            <button className="p-2 bg-red-50 hover:bg-red-100 rounded-md">
+                                                <Trash2 className="w-4 h-4 text-red-500" />
                                             </button>
                                         </div>
                                     </td>
+
                                 </tr>
-                            ) : filteredQuotes.length === 0 ? (
-                                <tr>
-                                    <td colSpan="9" className="px-6 py-20 text-center">
-                                        <div className="flex flex-col items-center gap-3 grayscale opacity-60">
-                                            <Search className="w-12 h-12 text-slate-300" />
-                                            <p className="text-slate-500 font-medium text-lg">No quotes found</p>
-                                            <p className="text-slate-400 text-sm">Create your first quote from a deal</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredQuotes.map((quote, index) => (
-                                    <tr key={quote.QuoteID} className="hover:bg-slate-50/80 transition-colors group">
-                                        <td className="px-6 py-4 text-sm text-slate-600 font-medium">{index + 1}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-400 font-mono tracking-tight">{quote.QuoteCode || "--"}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-sm font-bold text-slate-900">
-                                                {quote.PackageName || quote.QuoteName || "--"}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${getStatusColor(quote.QuoteStatus)}`}>
-                                                {quote.QuoteStatus || "Draft"}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-600">{quote.CompanyName || "--"}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-500 max-w-[200px] truncate">
-                                            {quote.Services && quote.Services.length > 0
-                                                ? quote.Services.map(s => s.ServiceName || s.ItemName).join(", ")
-                                                : "--"}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm font-bold text-slate-900">
-                                            {quote.TotalAmount ? `₹${Number(quote.TotalAmount).toLocaleString('en-IN')}` : "--"}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-600">
-                                            {quote.CreatedAt ? format(new Date(quote.CreatedAt), 'dd-MM-yyyy') : "--"}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="p-2 text-slate-400 hover:text-[#4b49ac] hover:bg-slate-100 rounded-lg transition-all">
-                                                    <Eye className="w-4 h-4" />
-                                                </button>
-                                                <button className="p-2 text-slate-400 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all">
-                                                    <Download className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
+                            ))}
                         </tbody>
                     </table>
                 </div>
+
 
                 {/* Footer/Pagination */}
                 {!loading && filteredQuotes.length > 0 && (
