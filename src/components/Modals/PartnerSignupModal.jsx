@@ -34,6 +34,20 @@ const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [apiSuccess, setApiSuccess] = useState(false);
     const [createdAssociateId, setCreatedAssociateId] = useState(null);
+    const [otpValues, setOtpValues] = useState(["", "", "", ""]);
+    const [timer, setTimer] = useState(30);
+    const [isVerifying, setIsVerifying] = useState(false);
+
+    // Timer countdown for OTP
+    useEffect(() => {
+        let interval;
+        if (step === 2 && timer > 0) {
+            interval = setInterval(() => {
+                setTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [step, timer]);
 
     const validateStep1 = () => {
         const newErrors = {};
@@ -135,15 +149,19 @@ const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
             if (response.success) {
                 setCreatedAssociateId(response.data.AssociateID);
 
-                if (response.token && response.user) {
-                    localStorage.setItem("partnerToken", response.token); // Store partner token distinctly
-                    localStorage.setItem('EmployeeID', response.user.EmployeeID);
-                    localStorage.setItem('FranchiseeID', response.user.FranchiseeID);
-                    localStorage.setItem('AssociateID', response.user.id);
-                    setSecureItem("partnerUser", response.user); // Store partner user distinctly
+                // Request OTP after associate creation
+                try {
+                    await AssociateApi.requestAssociateEmailOtp(formData.email);
+                    setStep(2);
+                    setTimer(30);
+                    setOtpValues(["", "", "", ""]);
+                } catch (otpErr) {
+                    console.error("OTP request error during signup:", otpErr);
+                    setErrors((prev) => ({
+                        ...prev,
+                        api: "Associate created but failed to send OTP. Please try login or contact support.",
+                    }));
                 }
-
-                setStep(2);
             } else {
                 setErrors((prev) => ({
                     ...prev,
@@ -163,7 +181,73 @@ const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     };
 
     const handleBackStep = () => {
-        setStep(1);
+        if (step === 2) setStep(1);
+        else if (step === 3) setStep(2);
+    };
+
+    const handleOtpChange = async (index, value) => {
+        if (value.length <= 1) {
+            const newOtpValues = [...otpValues];
+            newOtpValues[index] = value;
+            setOtpValues(newOtpValues);
+
+            // Auto focus next input
+            if (value && index < 3) {
+                const nextInput = document.getElementById(`signup-otp-${index + 1}`);
+                nextInput?.focus();
+            }
+
+            // If all OTP fields are filled, verify OTP
+            if (index === 3 && value && newOtpValues.every((v) => v.length === 1)) {
+                setIsVerifying(true);
+                setErrors({});
+                try {
+                    const otp = newOtpValues.join("");
+                    const response = await AssociateApi.verifyAssociateEmailOtp(formData.email, otp);
+
+                    if (response.success) {
+                        // Store token and user
+                        if (response.token && response.user) {
+                            localStorage.setItem('partnerToken', response.token);
+                            localStorage.setItem('EmployeeID', response.user.EmployeeID);
+                            localStorage.setItem('FranchiseeID', response.user.FranchiseeID);
+                            localStorage.setItem('AssociateID', response.user.id);
+                            setSecureItem("partnerUser", response.user);
+                        }
+                        setStep(3); // Move to KYC
+                    } else {
+                        setErrors({ otp: response.message || "Invalid OTP" });
+                    }
+                } catch (err) {
+                    setErrors({ otp: err.response?.data?.message || "OTP verification failed" });
+                } finally {
+                    setIsVerifying(false);
+                }
+            }
+        }
+    };
+
+    const handleOtpKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+            const prevInput = document.getElementById(`signup-otp-${index - 1}`);
+            prevInput?.focus();
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (timer === 0) {
+            setIsSubmitting(true);
+            try {
+                await AssociateApi.requestAssociateEmailOtp(formData.email);
+                setTimer(30);
+                setOtpValues(["", "", "", ""]);
+                setErrors({});
+            } catch (err) {
+                setErrors({ api: "Failed to resend OTP" });
+            } finally {
+                setIsSubmitting(false);
+            }
+        }
     };
 
     const handleFinalSubmit = async () => {
@@ -503,6 +587,74 @@ const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                                 </div>
                             </form>
                         </motion.div>
+                    ) : step === 2 ? (
+                        <motion.div
+                            key="otp-step"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="p-8 flex flex-col items-center"
+                        >
+                            <button
+                                onClick={() => setStep(1)}
+                                className="self-start flex items-center text-gray-500 hover:text-gray-800 transition-colors mb-6 group"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 group-hover:-translate-x-1 transition-transform">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                                Back to Form
+                            </button>
+
+                            <h3 className="text-2xl font-bold text-[#1e293b] mb-4">OTP Verification</h3>
+                            <p className="text-center text-gray-500 mb-8 max-w-sm">
+                                We've sent a 4-digit verification code to <br />
+                                <span className="font-bold text-gray-800">{formData.email}</span>
+                            </p>
+
+                            <div className="flex gap-4 mb-8">
+                                {[0, 1, 2, 3].map((index) => (
+                                    <input
+                                        key={index}
+                                        id={`signup-otp-${index}`}
+                                        type="text"
+                                        maxLength="1"
+                                        value={otpValues[index]}
+                                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                        className="w-16 h-16 border-2 border-yellow-400 rounded-2xl text-center text-2xl font-bold outline-none focus:ring-4 focus:ring-yellow-100 transition-all"
+                                    />
+                                ))}
+                            </div>
+
+                            <div className="text-lg font-mono text-gray-600 mb-4">
+                                {`00:${timer.toString().padStart(2, "0")}`}
+                            </div>
+
+                            <p className="text-sm text-gray-500 mb-8">
+                                Didn't receive code?{" "}
+                                <button
+                                    onClick={handleResendOtp}
+                                    disabled={timer > 0 || isSubmitting}
+                                    className="text-yellow-600 font-bold hover:text-yellow-700 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                >
+                                    Resend OTP
+                                </button>
+                            </p>
+
+                            {isVerifying && (
+                                <div className="flex items-center gap-2 text-yellow-600 font-semibold mb-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Verifying...
+                                </div>
+                            )}
+
+                            {errors.otp && (
+                                <div className="flex items-center gap-1 text-sm text-red-500 font-medium mb-4">
+                                    <AlertCircle className="w-4 h-4" />
+                                    <span>{errors.otp}</span>
+                                </div>
+                            )}
+                        </motion.div>
                     ) : (
                         <motion.div
                             key="kyc-step"
@@ -523,7 +675,7 @@ const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                                         <path d="M19 12H5M12 19l-7-7 7-7" />
                                     </svg>
                                 </motion.div>
-                                Back to Form
+                                Back to Verification
                             </button>
 
                             <div className="mb-8">
