@@ -201,7 +201,7 @@ const AssociateQuotes = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 leading-tight">Quotes</h1>
                     <p className="text-sm text-slate-500 mt-1">
-                        {activeTab === 'requested' ? 'View status of requested quotes' : 'Manage your approved quotes'}
+                        {activeTab === 'requested' ? 'View status of requested quotes' : 'Manage your quotes'}
                     </p>
                 </div>
             </div>
@@ -227,7 +227,7 @@ const AssociateQuotes = () => {
                         : 'text-slate-400 hover:text-slate-600'
                         }`}
                 >
-                    Approved Quotes
+                    Created Quotes
                     {activeTab === 'approved' && (
                         <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#4b49ac]" />
                     )}
@@ -389,7 +389,7 @@ const AssociateQuotes = () => {
                                 ) : filteredQuotes.length === 0 ? (
                                     <tr>
                                         <td colSpan="12" className="px-4 py-12 text-center text-slate-400">
-                                            No approved quotes found
+                                            No quotes found
                                         </td>
                                     </tr>
                                 ) : (
