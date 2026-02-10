@@ -98,6 +98,26 @@ export const requestQuote = async (id) => {
     }
 };
 
+export const updateDeal = async (payload) => {
+    try {
+        const response = await axiosInstance.post("/edit-deal", payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error updating deal:", error);
+        throw error;
+    }
+};
+
+export const deleteDeal = async (id) => {
+    try {
+        const response = await axiosInstance.post("/delete-deal", { id });
+        return response.data;
+    } catch (error) {
+        console.error("Error deleting deal:", error);
+        throw error;
+    }
+};
+
 export default {
     convertToDeal,
     listDeals,
@@ -106,4 +126,6 @@ export default {
     getDealById,
     getCompanyDetails,
     requestQuote,
+    updateDeal,
+    deleteDeal,
 };

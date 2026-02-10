@@ -5,7 +5,8 @@ import locationData from "../../utils/statesAndDistricts.json";
 import DealsApi from "../../api/DealsApi";
 import { getSecureItem } from "../../utils/secureStorage";
 
-const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
+const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
+    console.log("AddDealModal deal prop:", deal);
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [availableDistricts, setAvailableDistricts] = useState([]);
@@ -21,7 +22,7 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
         state: "",
         district: "",
         preferredLanguage: "",
-        followupNote: "",
+        // followupNote: "",
         closureDate: "",
         // Service Details
         serviceType: "individual", // "individual" or "package"
@@ -103,6 +104,76 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
             fetchServiceCategories();
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        const fetchFullDealDetails = async () => {
+            if (isOpen && deal && deal.id) {
+                try {
+                    const result = await DealsApi.getDealById(deal.id);
+                    if (result.success && result.data) {
+                        const d = result.data;
+                        setFormData({
+                            customerName: d.name || "",
+                            mobile: d.mobile || "",
+                            email: d.email || "",
+                            country: d.country || "India",
+                            pincode: d.PinCode || d.pincode || "",
+                            state: d.state || "",
+                            district: d.district || d.District || "",
+                            preferredLanguage: d.PreferredLanguage || d.preferredLanguage || "",
+                            closureDate: d.ClosureDate ? d.ClosureDate.split('T')[0] : "",
+                            serviceType: d.dealType?.toLowerCase() || "individual",
+                            serviceCategory: d.serviceCategoryId || d.services?.[0]?.serviceCategoryId || "",
+                            serviceState: d.StateService || d.state || "",
+                            selectedServices: d.services?.map(s => s.serviceId || s.ServiceID).filter(id => id) || [],
+                            selectedPackage: d.packageId || null,
+                            billingPeriod: d.billingPeriod || "monthly",
+                            companyName: d.CompanyName || "",
+                            companyGST: d.CompanyGST || d.gst || "",
+                            companyMobile: d.CompanyMobile || d.mobile || "",
+                            companyEmail: d.CompanyEmail || d.email || "",
+                            companyCountry: d.CompanyCountry || "India",
+                            companyState: d.CompanyState || d.state || "",
+                            companyDistrict: d.CompanyDistrict || d.district || "",
+                            companyPreferredLanguage: d.CompanyPreferredLanguage || "",
+                        });
+                    }
+                } catch (err) {
+                    console.error("Error fetching full deal details", err);
+                }
+            } else if (isOpen && !deal) {
+                // Reset form for fresh create
+                setFormData({
+                    customerName: "",
+                    mobile: "",
+                    email: "",
+                    country: "India",
+                    pincode: "",
+                    state: "",
+                    district: "",
+                    preferredLanguage: "",
+                    closureDate: "",
+                    serviceType: "individual",
+                    serviceCategory: "",
+                    serviceState: "",
+                    selectedServices: [],
+                    selectedPackage: null,
+                    billingPeriod: "monthly",
+                    companyName: "",
+                    companyGST: "",
+                    companyMobile: "",
+                    companyEmail: "",
+                    companyCountry: "India",
+                    companyState: "",
+                    companyDistrict: "",
+                    companyPreferredLanguage: "",
+                });
+                setStep(1);
+            }
+        };
+
+        fetchFullDealDetails();
+    }, [isOpen, deal]);
 
     // Fetch services when service category changes
     useEffect(() => {
@@ -346,11 +417,9 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
             const selectedCategory = serviceCategories.find(c => c.CategoryID === parseInt(formData.serviceCategory));
 
             let servicesPayload = [];
-            console.log("formData DDD", { formData });
 
             // Build services payload based on service type
             if (formData.serviceType === "individual") {
-                // Map selected services with their pricing details
                 servicesPayload = formData.selectedServices.map((serviceId) => {
                     const service = availableServices.find(
                         (s) => s.ServiceID === serviceId,
@@ -358,118 +427,117 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
                     const pricing = servicePricing.find((p) => p.ServiceID === serviceId);
 
                     return {
-                        ServiceID: serviceId,
-                        ServiceName: service?.ServiceName || pricing?.ServiceName || "",
-                        CategoryID: formData.serviceCategory,
-                        CategoryName: selectedCategory?.Name || "",
-                        StateID: selectedState?.ID || null,
-                        StateName: formData.serviceState || null,
-                        ProfessionalFee: pricing?.ProfessionalFee || 0,
-                        VendorFee: pricing?.VendorFee || 0,
-                        ContractFee: pricing?.ContractFee || 0,
-                        GovernmentFee: pricing?.GovernmentFee || 0,
-                        TotalFee: pricing?.TotalFee || pricing?.Total || 0,
-                        ServiceType: "individual",
+                        serviceId: serviceId,
+                        serviceName: service?.ServiceName || pricing?.ServiceName || "",
+                        serviceCategoryId: formData.serviceCategory,
+                        serviceCategory: selectedCategory?.Name || "",
+                        professionalFee: pricing?.ProfessionalFee || 0,
+                        vendorFee: pricing?.VendorFee || 0,
+                        contractorFee: pricing?.ContractFee || 0,
+                        govtFee: pricing?.GovernmentFee || 0,
+                        total: pricing?.TotalFee || pricing?.Total || 0,
                         dealType: "Individual",
                     };
                 });
             } else if (formData.serviceType === "package") {
-                // For package services, include package details and individual services
                 const selectedPackage = availablePackages.find(
                     (pkg) => pkg.PackageID === parseInt(formData.selectedPackage),
                 );
 
                 if (selectedPackage) {
-                    const packagePrice =
-                        formData.billingPeriod === "yearly"
-                            ? selectedPackage.YearlyFinalAmount
-                            : selectedPackage.MonthlyFinalAmount;
-
                     if (selectedPackage.services && selectedPackage.services.length > 0) {
                         servicesPayload = selectedPackage.services.map((s) => ({
-                            ServiceID: s.ServiceID || s.serviceId,
                             serviceId: s.ServiceID || s.serviceId,
-                            ServiceName: s.ServiceName || s.name || "",
                             serviceName: s.ServiceName || s.name || "",
-                            PackageID: selectedPackage.PackageID,
                             packageId: selectedPackage.PackageID,
-                            PackageName: selectedPackage.PackageName,
                             packageName: selectedPackage.PackageName,
-                            BillingPeriod: formData.billingPeriod,
                             billingPeriod: formData.billingPeriod,
-                            StateID: selectedState?.ID || null,
-                            StateName: formData.serviceState || null,
-                            ProfessionalFee: formData.billingPeriod === "yearly" ? (s.ProfessionalFeeYearly || 0) : (s.ProfessionalFeeMonthly || 0),
-                            VendorFee: formData.billingPeriod === "yearly" ? (s.VendorFeeYearly || 0) : (s.VendorFeeMonthly || 0),
-                            GovernmentFee: formData.billingPeriod === "yearly" ? (s.GovernmentFeeYearly || 0) : (s.GovernmentFeeMonthly || 0),
-                            TotalFee: formData.billingPeriod === "yearly" ? (s.TotalFeeYearly || 0) : (s.TotalFeeMonthly || 0),
-                            ServiceType: "package",
+                            professionalFee: formData.billingPeriod === "yearly" ? (s.ProfessionalFeeYearly || 0) : (s.ProfessionalFeeMonthly || 0),
+                            vendorFee: formData.billingPeriod === "yearly" ? (s.VendorFeeYearly || 0) : (s.VendorFeeMonthly || 0),
+                            govtFee: formData.billingPeriod === "yearly" ? (s.GovernmentFeeYearly || 0) : (s.GovernmentFeeMonthly || 0),
+                            total: formData.billingPeriod === "yearly" ? (s.TotalFeeYearly || 0) : (s.TotalFeeMonthly || 0),
                             dealType: "Package",
                         }));
-                    } else {
-                        // Fallback
-                        servicesPayload = [
-                            {
-                                PackageID: selectedPackage.PackageID,
-                                packageId: selectedPackage.PackageID,
-                                PackageName: selectedPackage.PackageName,
-                                packageName: selectedPackage.PackageName,
-                                BillingPeriod: formData.billingPeriod,
-                                billingPeriod: formData.billingPeriod,
-                                StateID: selectedState?.ID || null,
-                                StateName: formData.serviceState || null,
-                                TotalFee: packagePrice || 0,
-                                ServiceType: "package",
-                                dealType: "Package",
-                            },
-                        ];
                     }
                 }
             }
 
-            const payload = {
-                leadId: null, // LeadId is null for direct deal creation from modal
-                customer: {
+            if (deal && deal.id) {
+                // UPDATE FLOW
+                const payload = {
+                    id: deal.id,
                     name: formData.customerName,
                     mobile: formData.mobile,
                     email: formData.email,
-                    country: formData.country,
-                    pincode: formData.pincode,
                     state: formData.state,
-                    district: formData.district,
-                    preferredLanguage: formData.preferredLanguage,
-                    followupNote: formData.followupNote,
-                    closureDate: formData.closureDate,
-                    isAssociate: true,
-                    services: servicesPayload, // Add services to customer object
-                },
-                company: {
-                    name: formData.companyName,
-                    gst: formData.companyGST,
-                    mobile: formData.companyMobile,
-                    email: formData.companyEmail,
-                    country: formData.companyCountry,
-                    state: formData.companyState,
-                    district: formData.companyDistrict,
-                    preferredLanguage: formData.companyPreferredLanguage,
-                    isAssociate: true,
-                },
-                dealType: formData.serviceType === "individual" ? "Individual" : "Package",
-                serviceType: formData.serviceType,
-                franchiseeId: user.FranchiseeID || 1,
-                employeeId: user.EmployeeID || 9,
-                isAssociate: true,
-                AssociateID: user.id || null,
-            };
-
-            console.log("payload", payload);
-
-            const response = await DealsApi.convertToDeal(payload);
-            if (response.success) {
-                onSuccess && onSuccess();
-                onClose();
+                    franchiseId: user.FranchiseeID || 1,
+                    employeeId: user.EmployeeID || 9,
+                    converted_at: deal.converted_at || new Date().toISOString(),
+                    CompanyID: deal.CompanyID,
+                    CustomerID: deal.CustomerID,
+                    ClosureDate: formData.closureDate,
+                    serviceCategoryId: formData.serviceCategory,
+                    serviceCategory: selectedCategory?.Name || "",
+                    quoteCRE: deal.quoteCRE || 9, // Fallback if missing
+                    sourceOfSale: deal.sourceOfSale || "Direct",
+                    dealType: formData.serviceType === "individual" ? "Individual" : "Package",
+                    services: servicesPayload,
+                    packageName: formData.serviceType === "package" ? servicesPayload[0]?.packageName : null,
+                    packageId: formData.serviceType === "package" ? servicesPayload[0]?.packageId : null,
+                    billingPeriod: formData.billingPeriod,
+                    StateService: formData.serviceState,
+                    AssociateID: user.id || null,
+                };
+                const response = await DealsApi.updateDeal(payload);
+                if (response.success) {
+                    onSuccess && onSuccess();
+                    onClose();
+                } else {
+                    setErrors({ api: response.message || "Failed to update deal" });
+                }
             } else {
-                setErrors({ api: response.message || "Failed to create deal" });
+                // CREATE FLOW
+                const payload = {
+                    leadId: null,
+                    customer: {
+                        name: formData.customerName,
+                        mobile: formData.mobile,
+                        email: formData.email,
+                        country: formData.country,
+                        pincode: formData.pincode,
+                        state: formData.state,
+                        district: formData.district,
+                        preferredLanguage: formData.preferredLanguage,
+                        closureDate: formData.closureDate,
+                        isAssociate: true,
+                        services: servicesPayload.map(s => ({ ...s, ServiceID: s.serviceId, ServiceName: s.serviceName, CategoryID: s.serviceCategoryId, CategoryName: s.serviceCategory, TotalFee: s.total, ProfessionalFee: s.professionalFee, VendorFee: s.vendorFee, GovernmentFee: s.govtFee, ContractFee: s.contractorFee })),
+                    },
+                    company: {
+                        name: formData.companyName,
+                        gst: formData.companyGST,
+                        mobile: formData.companyMobile,
+                        email: formData.companyEmail,
+                        country: formData.companyCountry,
+                        state: formData.companyState,
+                        district: formData.companyDistrict,
+                        preferredLanguage: formData.companyPreferredLanguage,
+                        isAssociate: true,
+                    },
+                    dealType: formData.serviceType === "individual" ? "Individual" : "Package",
+                    serviceType: formData.serviceType,
+                    franchiseeId: user.FranchiseeID || 1,
+                    employeeId: user.EmployeeID || 9,
+                    isAssociate: true,
+                    AssociateID: user.id || null,
+                };
+
+                const response = await DealsApi.convertToDeal(payload);
+                if (response.success) {
+                    onSuccess && onSuccess();
+                    onClose();
+                } else {
+                    setErrors({ api: response.message || "Failed to create deal" });
+                }
             }
         } catch (error) {
             setErrors({ api: error.response?.data?.message || "An error occurred" });
@@ -490,9 +558,9 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
             >
                 <div className="p-8">
                     <div className="flex justify-between items-center mb-6">
-                        {/* <h2 className="text-xl font-bold text-gray-900">
-                            This lead is qualified. You must create a Deal to proceed.
-                        </h2> */}
+                        <h2 className="text-xl font-bold text-gray-900">
+                            {deal ? "Edit Deal" : "Add New Deal"}
+                        </h2>
                         <button
                             onClick={onClose}
                             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -663,7 +731,7 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
                                     <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
                                 </div>
 
-                                <div>
+                                {/* <div>
                                     <label className="text-sm font-medium text-gray-700 block mb-1">
                                         Follow-up Note
                                     </label>
@@ -674,7 +742,7 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
                                         className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] focus:border-transparent min-h-[100px]"
                                         placeholder="Add note..."
                                     />
-                                </div>
+                                </div> */}
 
                                 <div>
                                     <label className="text-sm font-medium text-gray-700 block mb-1">
@@ -1118,12 +1186,16 @@ const AddDealModal = ({ isOpen, onClose, onSuccess }) => {
                                     <button
                                         onClick={handleSubmit}
                                         disabled={isSubmitting}
-                                        className="bg-[#4b49ac] text-white px-8 py-2 rounded-lg font-medium hover:bg-[#3f3da0] transition-colors flex items-center gap-2"
+                                        className="bg-[#4b49ac] text-white px-8 py-2 rounded-lg font-medium hover:bg-[#3f3da0] transition-colors disabled:opacity-50 flex items-center gap-2"
                                     >
                                         {isSubmitting ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : null}
-                                        Convert
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                {deal ? "Updating..." : "Submitting..."}
+                                            </>
+                                        ) : (
+                                            deal ? "Update Deal" : "Create Deal"
+                                        )}
                                     </button>
                                 </div>
                             </motion.div>

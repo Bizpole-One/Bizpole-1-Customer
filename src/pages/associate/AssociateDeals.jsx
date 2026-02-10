@@ -15,6 +15,8 @@ const AssociateDeals = () => {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [creatingQuote, setCreatingQuote] = useState(null); // Track which deal is being converted
+    const [editingDeal, setEditingDeal] = useState(null); // Track which deal is being edited
+    const [deletingDeal, setDeletingDeal] = useState(null); // Track which deal is being deleted
 
     const [companyNames, setCompanyNames] = useState({});
 
@@ -69,6 +71,28 @@ const AssociateDeals = () => {
 
     const handleDealSuccess = () => {
         fetchDeals();
+        setEditingDeal(null);
+    };
+
+    const handleEdit = (deal) => {
+        setEditingDeal(deal);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (deal) => {
+        if (window.confirm(`Are you sure you want to delete deal "${deal.name}"?`)) {
+            try {
+                const result = await DealsApi.deleteDeal(deal.id);
+                if (result.success) {
+                    fetchDeals();
+                } else {
+                    alert(result.message || "Failed to delete deal");
+                }
+            } catch (err) {
+                console.error("Delete deal error", err);
+                alert("An error occurred while deleting the deal");
+            }
+        }
     };
 
     const handleCreateQuote = async (deal) => {
@@ -92,15 +116,15 @@ const AssociateDeals = () => {
         }
     };
 
-    const getStatusColor = (status) => {
-        const s = status?.toLowerCase() || '';
-        if (s.includes('hot')) return 'bg-orange-50 text-orange-600 border-orange-200';
-        if (s.includes('won')) return 'bg-green-50 text-green-600 border-green-200';
-        if (s.includes('warm')) return 'bg-blue-50 text-blue-600 border-blue-200';
-        if (s.includes('cold')) return 'bg-gray-50 text-gray-600 border-gray-200';
-        if (s.includes('overdue')) return 'bg-red-50 text-red-600 border-red-200';
-        return 'bg-slate-50 text-slate-600 border-slate-200';
-    };
+    // const getStatusColor = (status) => {
+    //     const s = status?.toLowerCase() || '';
+    //     if (s.includes('hot')) return 'bg-orange-50 text-orange-600 border-orange-200';
+    //     if (s.includes('won')) return 'bg-green-50 text-green-600 border-green-200';
+    //     if (s.includes('warm')) return 'bg-blue-50 text-blue-600 border-blue-200';
+    //     if (s.includes('cold')) return 'bg-gray-50 text-gray-600 border-gray-200';
+    //     if (s.includes('overdue')) return 'bg-red-50 text-red-600 border-red-200';
+    //     return 'bg-slate-50 text-slate-600 border-slate-200';
+    // };
 
     return (
         <div className="p-6 space-y-6 bg-slate-50/50 min-h-screen">
@@ -147,7 +171,7 @@ const AssociateDeals = () => {
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">S.No</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ID</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deal Name</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                {/* <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th> */}
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Company</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Closure Date</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Services</th>
@@ -221,11 +245,11 @@ const AssociateDeals = () => {
                                                 </div>
                                             </td>
 
-                                            <td className="px-6 py-4">
+                                            {/* <td className="px-6 py-4">
                                                 <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${getStatusColor(deal.status)}`}>
                                                     {deal.status}
                                                 </span>
-                                            </td>
+                                            </td> */}
 
                                             <td className="px-6 py-4 text-sm text-slate-600">
                                                 {companyNames[deal.CompanyID] || deal.CompanyName || "--"}
@@ -287,11 +311,17 @@ const AssociateDeals = () => {
                                                         )}
                                                     </button>
 
-                                                    <button className="p-2 text-slate-400 hover:text-[#4b49ac] hover:bg-slate-100 rounded-lg transition-all">
+                                                    <button
+                                                        onClick={() => handleEdit(deal)}
+                                                        className="p-2 text-slate-400 hover:text-[#4b49ac] hover:bg-slate-100 rounded-lg transition-all"
+                                                    >
                                                         <Edit2 className="w-4 h-4" />
                                                     </button>
 
-                                                    <button className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                                    <button
+                                                        onClick={() => handleDelete(deal)}
+                                                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
@@ -331,8 +361,12 @@ const AssociateDeals = () => {
 
             <AddDealModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingDeal(null);
+                }}
                 onSuccess={handleDealSuccess}
+                deal={editingDeal}
             />
         </div>
     );
