@@ -142,6 +142,21 @@ export const listAssociateReceipts = async (filters) => {
     }
 };
 
+
+/**
+ * Get associate receipt details
+ * @param {string|number} paymentId
+ */
+export const getAssociateReceiptDetails = async (paymentId) => {
+    try {
+        const response = await axiosInstance.post("/associate-receipt-details", { paymentId });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching receipt details:", error);
+        throw error;
+    }
+};
+
 export default {
     createAssociate,
     updateAssociate,
@@ -150,6 +165,9 @@ export default {
     verifyAssociateEmailOtp,
     uploadAssociateDocuments,
     listAssociateReceipts,
+    getAssociateReceiptDetails,
 };
+
+
 
 

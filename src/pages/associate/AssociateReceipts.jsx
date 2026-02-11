@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Loader2, ChevronLeft, ChevronRight, FileText, Download } from 'lucide-react';
+import { Search, Filter, Loader2, ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
 import { getSecureItem } from '../../utils/secureStorage';
 import { format } from 'date-fns';
-import { listAssociateReceipts } from '../../api/AssociateApi';
+import { listAssociateReceipts, getAssociateReceiptDetails } from '../../api/AssociateApi';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const AssociateReceipts = () => {
     const [receipts, setReceipts] = useState([]);
@@ -13,6 +15,11 @@ const AssociateReceipts = () => {
     const [totalReceipts, setTotalReceipts] = useState(0);
     const pageSize = 10;
 
+    // Modal state
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedReceipt, setSelectedReceipt] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+
     const navigate = useNavigate();
 
     const fetchReceipts = async () => {
@@ -21,17 +28,13 @@ const AssociateReceipts = () => {
             const user = getSecureItem("partnerUser") || {};
             const AssociateID = user.id || localStorage.getItem("AssociateID");
 
-            // We use the new API endpoint which enforces isVerified=1
             const response = await listAssociateReceipts({
                 isAssociate: true,
                 AssociateID: AssociateID,
                 limit: pageSize,
                 page: currentPage,
                 search: searchTerm,
-                // isVerified: true // API enforces this, but no harm sending
             });
-
-            console.log("receipts response", response);
 
             if (response.success) {
                 setReceipts(response.data);
@@ -53,6 +56,152 @@ const AssociateReceipts = () => {
             setCurrentPage(1);
             fetchReceipts();
         }
+    };
+
+    const handleViewReceipt = async (paymentId) => {
+        setDetailLoading(true);
+        setModalOpen(true);
+        try {
+            const response = await getAssociateReceiptDetails(paymentId);
+            if (response.success) {
+                setSelectedReceipt(response.data);
+            }
+        } catch (error) {
+            console.error("Error fetching details:", error);
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    const downloadPDF = async (receiptData = null) => {
+        const data = receiptData || selectedReceipt;
+        if (!data) return;
+
+        // If data is just from the list (missing services), we might want to fetch details first if downloading from list
+        // But for "Receipt" button click, we view details first. 
+        // For "Download" button in list, we should fetch details first.
+
+        let fullData = data;
+        if (!data.services) {
+            try {
+                const res = await getAssociateReceiptDetails(data.PaymentID);
+                if (res.success) fullData = res.data;
+            } catch (e) {
+                console.error("Error fetching full details for PDF", e);
+                return;
+            }
+        }
+
+        const doc = new jsPDF();
+
+        // Header Background
+        doc.setFillColor(255, 193, 7); // Amber/Yellow
+        doc.rect(0, 0, 210, 40, 'F');
+
+        // Header Text
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text("PAYMENT RECEIPT", 14, 20);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text("Official Transaction Record", 14, 28);
+
+        // Receipt ID
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        doc.text(`Receipt ID: ${fullData.PaymentID}`, 14, 50);
+
+        // Main Details
+        const startY = 60;
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+
+        // Row 1
+        doc.text("TRANSACTION ID", 14, startY);
+        doc.text("TRANSACTION DATE", 110, startY);
+
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text(fullData.TransactionID || "N/A", 14, startY + 6);
+        doc.text(
+            fullData.TransactionDate
+                ? format(new Date(fullData.TransactionDate), "dd/MM/yyyy")
+                : (fullData.PaymentDate ? format(new Date(fullData.PaymentDate), "dd/MM/yyyy") : "N/A")
+            , 110, startY + 6);
+
+        // Row 2
+        const row2Y = startY + 20;
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text("PAYMENT STATUS", 14, row2Y);
+
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'bold');
+        doc.text((fullData.PaymentStatus || "").toUpperCase(), 14, row2Y + 6);
+        doc.setFont('helvetica', 'normal');
+
+        // Remarks
+        const row3Y = row2Y + 20;
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text("REMARKS", 14, row3Y);
+
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text(fullData.Remarks || "No remarks provided", 14, row3Y + 6);
+
+        // Service Breakdown Table
+        const tableY = row3Y + 20;
+        doc.setFontSize(14);
+        doc.setTextColor(245, 158, 11); // Orange
+        doc.text("Service Breakdown", 14, tableY);
+        doc.line(14, tableY + 2, 14, tableY + 6); // Small vertical bar visual
+
+        const tableColumn = ["Service", "Vendor Fee", "Professional Fee", "Contractor Fee"];
+        const tableRows = [];
+
+        if (fullData.services && fullData.services.length > 0) {
+            fullData.services.forEach(service => {
+                const serviceData = [
+                    service.ServiceName || `Service ID: ${service.ServiceID}`,
+                    `Rs. ${parseFloat(service.VendorFee || 0).toFixed(2)}`,
+                    `Rs. ${parseFloat(service.ProfessionalFee || 0).toFixed(2)}`,
+                    `Rs. ${parseFloat(service.ContractorFee || 0).toFixed(2)}`,
+                ];
+                tableRows.push(serviceData);
+            });
+        } else {
+            // If no specific services found (e.g. lump sum or legacy data), show generic row if needed or leave empty
+            // Based on design, it shows "Service Details"
+            tableRows.push([
+                "Service Details",
+                `Rs. ${parseFloat(fullData.VendorFee || 0).toFixed(2)}`,
+                `Rs. ${parseFloat(fullData.ProfessionalFee || fullData.ProfFee || 0).toFixed(2)}`,
+                `Rs. ${parseFloat(fullData.ContractorFee || 0).toFixed(2)}`,
+            ]);
+        }
+
+        autoTable(doc, {
+            startY: tableY + 10,
+            head: [tableColumn],
+            body: tableRows,
+            theme: 'grid',
+            headStyles: { fillColor: [249, 250, 251], textColor: [100, 100, 100], fontStyle: 'bold' },
+            styles: { fontSize: 10, cellPadding: 6 },
+        });
+
+        // Total Amount at bottom
+        const finalY = doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Total Amount: Rs. ${parseFloat(fullData.TotalAmount || 0).toFixed(2)}`, 140, finalY, { align: 'right' });
+
+
+        doc.save(`Receipt_${fullData.PaymentID}.pdf`);
     };
 
     const totalPages = Math.ceil(totalReceipts / pageSize);
@@ -156,10 +305,15 @@ const AssociateReceipts = () => {
                                         </td>
                                         <td className="px-4 py-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <button className="px-3 py-1.5 bg-[#f59e0b] hover:bg-[#d97706] text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1">
+                                                <button
+                                                    onClick={() => handleViewReceipt(receipt.PaymentID)}
+                                                    className="px-3 py-1.5 bg-[#f59e0b] hover:bg-[#d97706] text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                                                >
                                                     Receipt
                                                 </button>
-                                                <button className="px-3 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1">
+                                                <button
+                                                    onClick={() => downloadPDF(receipt)}
+                                                    className="px-3 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1">
                                                     Download
                                                 </button>
                                             </div>
@@ -205,6 +359,133 @@ const AssociateReceipts = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Receipt Modal */}
+            {modalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        {/* Header */}
+                        <div className="bg-[#fbbf24] p-6 flex justify-between items-start">
+                            <div>
+                                <h2 className="text-xl font-bold text-white uppercase tracking-wide">Payment Receipts</h2>
+                                <p className="text-white/90 text-sm mt-1">Official Transaction Record</p>
+                            </div>
+                            <button
+                                onClick={() => setModalOpen(false)}
+                                className="text-white/80 hover:text-white transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 max-h-[70vh] overflow-y-auto">
+                            {detailLoading ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <Loader2 className="w-8 h-8 animate-spin text-[#fbbf24]" />
+                                    <p className="mt-2 text-slate-500">Loading details...</p>
+                                </div>
+                            ) : selectedReceipt ? (
+                                <div className="space-y-6">
+                                    <div className="text-sm text-slate-500">
+                                        Receipt ID: {selectedReceipt.PaymentID}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg">
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 uppercase mb-1">Transaction ID</p>
+                                            <div className="bg-white border border-slate-200 rounded px-3 py-2 text-sm font-medium text-slate-700">
+                                                {selectedReceipt.TransactionID || "N/A"}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 uppercase mb-1">Transaction Date</p>
+                                            <div className="font-bold text-lg text-slate-800">
+                                                {selectedReceipt.TransactionDate
+                                                    ? format(new Date(selectedReceipt.TransactionDate), "M/d/yyyy")
+                                                    : (selectedReceipt.PaymentDate ? format(new Date(selectedReceipt.PaymentDate), "M/d/yyyy") : "N/A")}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 uppercase mb-1">Payment Status</p>
+                                            <div className="font-bold text-lg text-slate-900 capitalize">
+                                                {selectedReceipt.PaymentStatus}
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1 md:col-span-2">
+                                            <p className="text-xs font-bold text-slate-400 uppercase mb-1">Remarks</p>
+                                            <div className="bg-white border border-slate-200 rounded px-3 py-2 text-sm text-slate-600">
+                                                {selectedReceipt.Remarks || "No remarks"}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Service Breakdown */}
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-1 h-4 bg-[#d97706] rounded-full"></div>
+                                            <h3 className="text-sm font-bold text-slate-700">Service Breakdown</h3>
+                                        </div>
+
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                            <table className="w-full text-xs text-left">
+                                                <thead className="bg-slate-50 border-b border-slate-200">
+                                                    <tr>
+                                                        <th className="px-4 py-3 font-semibold text-slate-500 uppercase">Service</th>
+                                                        <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right">Vendor Fee</th>
+                                                        <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right">Professional Fee</th>
+                                                        <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right">Contractor Fee</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {selectedReceipt.services && selectedReceipt.services.length > 0 ? (
+                                                        selectedReceipt.services.map((svc, idx) => (
+                                                            <tr key={idx}>
+                                                                <td className="px-4 py-3 text-slate-700 font-medium">
+                                                                    {svc.ServiceName || `Service ID: ${svc.ServiceID}`}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right text-slate-600">₹{parseFloat(svc.VendorFee || 0).toFixed(2)}</td>
+                                                                <td className="px-4 py-3 text-right text-slate-600">₹{parseFloat(svc.ProfessionalFee || 0).toFixed(2)}</td>
+                                                                <td className="px-4 py-3 text-right text-slate-600">₹{parseFloat(svc.ContractorFee || 0).toFixed(2)}</td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        <tr>
+                                                            <td className="px-4 py-3 text-slate-700 font-medium">Service Details</td>
+                                                            <td className="px-4 py-3 text-right text-slate-600">₹{parseFloat(selectedReceipt.VendorFee || 0).toFixed(2)}</td>
+                                                            <td className="px-4 py-3 text-right text-slate-600">₹{parseFloat(selectedReceipt.ProfessionalFee || selectedReceipt.ProfFee || 0).toFixed(2)}</td>
+                                                            <td className="px-4 py-3 text-right text-slate-600">₹{parseFloat(selectedReceipt.ContractorFee || 0).toFixed(2)}</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-center text-slate-500">No details available</p>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+                            <button
+                                onClick={() => setModalOpen(false)}
+                                className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                                Close
+                            </button>
+                            <button
+                                onClick={() => downloadPDF()}
+                                className="px-4 py-2 bg-[#fbbf24] hover:bg-[#f59e0b] text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2"
+                            >
+                                <Download className="w-4 h-4" />
+                                Download PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
