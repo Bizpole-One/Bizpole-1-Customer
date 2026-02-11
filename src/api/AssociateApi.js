@@ -127,6 +127,21 @@ export const getAssociateDocuments = async (associateId) => {
     }
 };
 
+
+/**
+ * List associate receipts (verified payments)
+ * @param {Object} filters - filters including AssociateID
+ */
+export const listAssociateReceipts = async (filters) => {
+    try {
+        const response = await axiosInstance.post("/associate-receipts", filters);
+        return response.data;
+    } catch (error) {
+        console.error("Error listing associate receipts:", error);
+        throw error;
+    }
+};
+
 export default {
     createAssociate,
     updateAssociate,
@@ -134,4 +149,7 @@ export default {
     requestAssociateEmailOtp,
     verifyAssociateEmailOtp,
     uploadAssociateDocuments,
+    listAssociateReceipts,
 };
+
+
