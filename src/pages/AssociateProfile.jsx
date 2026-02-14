@@ -1,25 +1,35 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { User, Mail, Phone, Building2, MapPin, FileText, CheckCircle2, Upload, Edit, Download, Share2, Link } from 'lucide-react';
+import { User, Mail, Phone, Building2, MapPin, FileText, CheckCircle2, Upload, Edit, Download, Share2, Link, X } from 'lucide-react';
 import { getSecureItem } from '../utils/secureStorage';
 import axiosInstance from '../api/axiosInstance';
 import { getAssociateById, getAssociateDocuments, uploadAssociateDocuments } from '../api/AssociateApi';
+import { getDistrictsByState } from '../utils/constants';
 
 const AssociateProfile = () => {
     const user = getSecureItem("partnerUser");
-
     const URL = import.meta.env.VITE_URL
-
 
     const [userData, setUserData] = useState();
     const [documents, setDocuments] = useState([]);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editFormData, setEditFormData] = useState({
+        AssociateID:"",
+        AssociateName: '',
+        Email: '',
+        Mobile: '',
+        District: '',
+        Profession: '',
+        State: ''
+    });
+    const [isSaving, setIsSaving] = useState(false);
 
+    console.log({ userData });
     console.log({ user });
 
     const fileInputRef = useRef(null);
     const [selectedDocType, setSelectedDocType] = useState(null);
     const [uploading, setUploading] = useState(false);
 
-    // Mock data for display - to be replaced with real data later
     const profileData = {
         fullName: userData?.AssociateName || "John Doe",
         email: userData?.Email || "john.doe@example.com",
@@ -30,6 +40,9 @@ const AssociateProfile = () => {
         kycStatus: "Verified",
         memberSince: "January 2024",
         assignedManager: "Rajesh Sharma",
+        Profession: userData?.Profession,
+        State: userData?.State,
+        District: userData?.District,
         stats: {
             totalLeads: 156,
             activeDeals: 34,
@@ -45,7 +58,6 @@ const AssociateProfile = () => {
 
                 console.log({ userDataResponse });
 
-
                 const docsResponse = await getAssociateDocuments(user.id);
                 setDocuments(docsResponse.data || []);
             }
@@ -57,6 +69,53 @@ const AssociateProfile = () => {
     useEffect(() => {
         fetchUserData();
     }, []);
+
+    // Open edit modal and populate form
+    const handleEditClick = () => {
+        setEditFormData({
+            AssociateID : user.id,
+            AssociateName: userData?.AssociateName || '',
+            Email: userData?.Email || '',
+            Mobile: userData?.Mobile || '',
+            District: userData?.District || '',
+            Profession: userData?.Profession || '',
+            State: userData?.State || ''
+        });
+        setIsEditModalOpen(true);
+    };
+
+    // Handle form input changes
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setEditFormData(prev => ({
+            ...prev,
+            [name]: value,
+            ...(name === 'State' && { District: '' })
+        }));
+    };
+
+    // Save profile changes
+    const handleSaveProfile = async () => {
+        setIsSaving(true);
+        try {
+            // Call your update API endpoint
+            const response = await axiosInstance.put(`/associate/${user.id}`, editFormData);
+
+            // Update local state with new data
+            setUserData(response.data);
+
+            alert("Profile updated successfully!");
+            setIsEditModalOpen(false);
+
+            // Refresh data from server
+            await fetchUserData();
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            alert("Failed to update profile. Please try again.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleUploadClick = (type) => {
         setSelectedDocType(type);
@@ -77,12 +136,8 @@ const AssociateProfile = () => {
 
         try {
             await uploadAssociateDocuments(formData);
-
-            // small delay for backend processing
             await new Promise(res => setTimeout(res, 500));
-
             await fetchUserData();
-
             alert("Document uploaded successfully!");
         } catch (error) {
             console.error("Upload failed", error);
@@ -93,7 +148,6 @@ const AssociateProfile = () => {
             e.target.value = '';
         }
     };
-
 
     const requiredDocuments = [
         { type: "PAN", name: "PAN Card", icon: FileText },
@@ -106,14 +160,12 @@ const AssociateProfile = () => {
             d => d.DocumentType.toLowerCase() === type.toLowerCase()
         );
 
-
-
         if (foundDoc) {
             return {
                 status: "Verified",
                 date: new Date(foundDoc.CreatedAt).toISOString().split('T')[0],
                 found: true,
-                url: foundDoc.FileUrl // 👈 add this
+                url: foundDoc.FileUrl
             };
         }
 
@@ -124,6 +176,7 @@ const AssociateProfile = () => {
             url: null
         };
     };
+
     return (
         <div className="max-w-7xl mx-auto p-6 space-y-6">
             <input
@@ -133,16 +186,188 @@ const AssociateProfile = () => {
                 onChange={handleFileChange}
                 accept=".pdf,.jpg,.jpeg,.png"
             />
+
+            {/* Edit Modal */}
+            {/* Edit Modal */}
+       {/* Edit Modal */}
+{isEditModalOpen && (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <h2 className="text-xl font-bold text-slate-900">Edit Profile</h2>
+                <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                    <X className="w-5 h-5 text-slate-500" />
+                </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Full Name</label>
+                        <input
+                            type="text"
+                            name="AssociateName"
+                            value={editFormData.AssociateName}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
+                            placeholder="Enter full name"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                        <input
+                            type="email"
+                            name="Email"
+                            value={editFormData.Email}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
+                            placeholder="Enter email"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Phone Number</label>
+                        <input
+                            type="tel"
+                            name="Mobile"
+                            value={editFormData.Mobile}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
+                            placeholder="Enter phone number"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">State</label>
+                        <select
+                            name="State"
+                            value={editFormData.State}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent bg-white"
+                        >
+                            <option value="">Select State</option>
+                            <option value="Andhra Pradesh">Andhra Pradesh</option>
+                            <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                            <option value="Assam">Assam</option>
+                            <option value="Bihar">Bihar</option>
+                            <option value="Chhattisgarh">Chhattisgarh</option>
+                            <option value="Goa">Goa</option>
+                            <option value="Gujarat">Gujarat</option>
+                            <option value="Haryana">Haryana</option>
+                            <option value="Himachal Pradesh">Himachal Pradesh</option>
+                            <option value="Jharkhand">Jharkhand</option>
+                            <option value="Karnataka">Karnataka</option>
+                            <option value="Kerala">Kerala</option>
+                            <option value="Madhya Pradesh">Madhya Pradesh</option>
+                            <option value="Maharashtra">Maharashtra</option>
+                            <option value="Manipur">Manipur</option>
+                            <option value="Meghalaya">Meghalaya</option>
+                            <option value="Mizoram">Mizoram</option>
+                            <option value="Nagaland">Nagaland</option>
+                            <option value="Odisha">Odisha</option>
+                            <option value="Punjab">Punjab</option>
+                            <option value="Rajasthan">Rajasthan</option>
+                            <option value="Sikkim">Sikkim</option>
+                            <option value="Tamil Nadu">Tamil Nadu</option>
+                            <option value="Telangana">Telangana</option>
+                            <option value="Tripura">Tripura</option>
+                            <option value="Uttar Pradesh">Uttar Pradesh</option>
+                            <option value="Uttarakhand">Uttarakhand</option>
+                            <option value="West Bengal">West Bengal</option>
+                            <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                            <option value="Chandigarh">Chandigarh</option>
+                            <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                            <option value="Delhi">Delhi</option>
+                            <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                            <option value="Ladakh">Ladakh</option>
+                            <option value="Lakshadweep">Lakshadweep</option>
+                            <option value="Puducherry">Puducherry</option>
+                        </select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">District</label>
+                        <select
+                            name="District"
+                            value={editFormData.District}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent bg-white"
+                            disabled={!editFormData.State}
+                        >
+                            <option value="">Select District</option>
+                            {getDistrictsByState(editFormData.State).map((district) => (
+                                <option key={district} value={district}>
+                                    {district}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Profession</label>
+                        <input
+                            type="text"
+                            name="Profession"
+                            value={editFormData.Profession}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
+                            placeholder="Enter profession"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
+                <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                    className="bg-[#009068] hover:bg-[#007a58] text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isSaving ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            Save Changes
+                        </>
+                    )}
+                </button>
+            </div>
+        </div>
+    </div>
+)}
+
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Profile</h1>
                     <p className="text-slate-500">Manage your account and KYC documents</p>
                 </div>
-                <button className="bg-[#009068] hover:bg-[#007a58] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors">
+                <button
+                    onClick={handleEditClick}
+                    className="bg-[#009068] hover:bg-[#007a58] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                >
+                    <Edit className="w-4 h-4" />
                     Edit Profile
                 </button>
             </div>
 
+            {/* Rest of your existing code... */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column - Personal Info & Documents */}
                 <div className="lg:col-span-2 space-y-6">
@@ -173,21 +398,21 @@ const AssociateProfile = () => {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700">Company Name</label>
+                                <label className="text-sm font-semibold text-slate-700">District</label>
                                 <div className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-600">
-                                    {profileData.companyName}
+                                    {profileData.District}
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700">Business Type</label>
+                                <label className="text-sm font-semibold text-slate-700">Profession</label>
                                 <div className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-600">
-                                    {profileData.businessType}
+                                    {profileData.Profession}
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700">City</label>
+                                <label className="text-sm font-semibold text-slate-700">State</label>
                                 <div className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-600">
-                                    {profileData.city}
+                                    {profileData.State}
                                 </div>
                             </div>
                         </div>
@@ -321,10 +546,6 @@ const AssociateProfile = () => {
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                         <h2 className="text-lg font-bold text-slate-900 mb-6">Quick Stats</h2>
                         <div className="space-y-6">
-                            <div className="flex justify-between items-center">
-                                <span className="text-slate-500 font-medium">Total Leads</span>
-                                <span className="text-xl font-bold text-slate-900">{profileData.stats.totalLeads}</span>
-                            </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-slate-500 font-medium">Active Deals</span>
                                 <span className="text-xl font-bold text-slate-900">{profileData.stats.activeDeals}</span>

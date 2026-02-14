@@ -19,6 +19,9 @@ const AssociateDeals = () => {
     const [editingDeal, setEditingDeal] = useState(null); // Track which deal is being edited
     const [deletingDeal, setDeletingDeal] = useState(null); // Track which deal is being deleted
 
+
+
+
     const [companyNames, setCompanyNames] = useState({});
     const [existingQuoteDealIds, setExistingQuoteDealIds] = useState([]);
 
@@ -293,8 +296,13 @@ const AssociateDeals = () => {
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-slate-600">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${deal.dealType === 'Package' ? 'bg-purple-50 text-purple-600 border border-purple-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
-                                                    {deal.dealType || "Individual"}
+                                                <span
+                                                    className={`px-2 py-0.5 rounded text-[10px] font-medium ${deal.isIndividual === 1
+                                                        ? "bg-blue-50 text-blue-600 border border-blue-100"
+                                                        : "bg-purple-50 text-purple-600 border border-purple-100"
+                                                        }`}
+                                                >
+                                                    {deal.isIndividual === 1 ? "Individual" : "Package"}
                                                 </span>
                                             </td>
 

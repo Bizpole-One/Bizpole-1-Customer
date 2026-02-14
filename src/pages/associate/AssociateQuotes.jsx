@@ -292,6 +292,9 @@ const AssociateQuotes = () => {
                                     </tr>
                                 ) : (
                                     filteredDeals.map((deal, index) => (
+
+                                        console.log("LLLLL",{deal}),
+                                        
                                         <tr key={deal.id} className="hover:bg-slate-50/50 transition-colors cursor-default">
                                             <td className="px-6 py-4 text-slate-400 text-xs font-medium">{index + 1}</td>
                                             <td className="px-6 py-4 text-slate-400 text-xs font-medium uppercase">{deal.DealCode || `--`}</td>
@@ -321,9 +324,14 @@ const AssociateQuotes = () => {
                                             <td className="px-6 py-4 text-sm text-slate-600">
                                                 {deal.serviceCategory || "--"}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-slate-600">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${deal.dealType === 'Package' ? 'bg-purple-50 text-purple-600 border border-purple-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
-                                                    {deal.dealType || "Individual"}
+                                            <td className="px-4 py-3">
+                                                <span
+                                                    className={`px-2 py-0.5 rounded text-[10px] font-medium ${Number(deal.isIndividual) === 1
+                                                            ? "bg-blue-50 text-blue-600 border border-blue-100"
+                                                            : "bg-purple-50 text-purple-600 border border-purple-100"
+                                                        }`}
+                                                >
+                                                    {Number(deal.isIndividual) === 1 ? "Individual" : "Package"}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-slate-500">

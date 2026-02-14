@@ -11,6 +11,8 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [availableDistricts, setAvailableDistricts] = useState([]);
     const [errors, setErrors] = useState({});
+        const [dealType, setDealType] = useState("Individual");
+
 
     const [formData, setFormData] = useState({
         // Customer Details
@@ -319,7 +321,21 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+     setFormData((prev) => {
+        const updatedData = { ...prev, [name]: value };
+
+        // 👇 If serviceType changes, also update dealType
+        if (name === "serviceType") {
+            updatedData.dealType =
+                value === "individual" ? "Individual" : "Package";
+        }
+
+        return updatedData;
+    });
+
+
+        
+
         if (errors[name]) {
             setErrors((prev) => {
                 const newErrors = { ...prev };
@@ -481,6 +497,7 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
                     quoteCRE: deal.quoteCRE || 9, // Fallback if missing
                     sourceOfSale: deal.sourceOfSale || "Direct",
                     dealType: formData.serviceType === "individual" ? "Individual" : "Package",
+                    isIndividual: formData.serviceType === "individual" ? 1 : 0,
                     services: servicesPayload,
                     packageName: formData.serviceType === "package" ? servicesPayload[0]?.packageName : null,
                     packageId: formData.serviceType === "package" ? servicesPayload[0]?.packageId : null,
@@ -524,6 +541,7 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
                         isAssociate: true,
                     },
                     dealType: formData.serviceType === "individual" ? "Individual" : "Package",
+                     isIndividual: formData.serviceType === "individual" ? 1 : 0,
                     serviceType: formData.serviceType,
                     franchiseeId: user.FranchiseeID || 1,
                     employeeId: user.EmployeeID || 9,

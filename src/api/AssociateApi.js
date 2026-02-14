@@ -16,6 +16,9 @@ export const createAssociate = async (payload) => {
     }
 };
 export const getAssociateById = async (id) => {
+
+    console.log("checking......");
+    
     try {
         const response = await axiosInstance.get(`/associateById/${id}`);
         return response.data;
