@@ -18,7 +18,7 @@ export const createAssociate = async (payload) => {
 export const getAssociateById = async (id) => {
 
     console.log("checking......");
-    
+
     try {
         const response = await axiosInstance.get(`/associateById/${id}`);
         return response.data;
@@ -174,6 +174,20 @@ export const getInvoicesForService = async (params) => {
     }
 };
 
+/**
+ * Get receipts for an order
+ * @param {string|number} orderId - The order ID
+ */
+export const getReceiptsForOrder = async (orderId) => {
+    try {
+        const response = await axiosInstance.get(`/receipt/${orderId}?type=order`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching receipts for order:", error);
+        throw error;
+    }
+};
+
 export default {
     createAssociate,
     updateAssociate,
@@ -183,7 +197,8 @@ export default {
     uploadAssociateDocuments,
     listAssociateReceipts,
     getAssociateReceiptDetails,
-    getInvoicesForService
+    getInvoicesForService,
+    getReceiptsForOrder
 };
 
 

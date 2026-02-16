@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { getOrderById } from '../../api/Orders/Order';
 import { format } from 'date-fns';
-import { listAssociateReceipts, getAssociateReceiptDetails, getInvoicesForService } from '../../api/AssociateApi';
+import { listAssociateReceipts, getAssociateReceiptDetails, getInvoicesForService, getReceiptsForOrder } from '../../api/AssociateApi';
 import { getSecureItem } from '../../utils/secureStorage';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -59,6 +59,10 @@ const OrderDetailView = () => {
         fetchOrderDetails();
     }, [id]);
 
+
+    console.log("WWWW", { receipts });
+
+
     useEffect(() => {
         if (activeTab === 'Receipts' && order) {
             fetchReceipts();
@@ -75,22 +79,20 @@ const OrderDetailView = () => {
         if (!order) return;
         setReceiptsLoading(true);
         try {
-            const user = getSecureItem("partnerUser") || {};
-            const AssociateID = user.id || localStorage.getItem("AssociateID");
 
-            const response = await listAssociateReceipts({
-                isAssociate: true,
-                AssociateID: AssociateID,
-                QuoteID: order.QuoteID, // Assuming order object has QuoteID
-                limit: 100 // Fetch all for this view or implement pagination if needed
-            });
+            console.log("Order ID", order);
+
+            const response = await getReceiptsForOrder(order.QuoteID);
             console.log("Order receipts", response);
+
             if (response.success) {
-                // Ensure CIN is populated if not already in response (it should be from controller update)
-                setReceipts(response.data);
+                setReceipts(response?.payments || []);
+            } else {
+                setReceipts([]);
             }
         } catch (err) {
             console.error("fetchReceipts error", err);
+            setReceipts([]);
         } finally {
             setReceiptsLoading(false);
         }
