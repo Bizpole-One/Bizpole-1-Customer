@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Loader2, Eye, FileText, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react';
 import { getSecureItem } from '../../utils/secureStorage';
 import { format, differenceInDays } from 'date-fns';
-import { listOrders } from '../../api/Orders/Order';
+import { initPayment, listOrders } from '../../api/Orders/Order';
 import { useNavigate } from 'react-router-dom';
 
 const AssociateOrders = () => {
@@ -11,6 +11,8 @@ const AssociateOrders = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalOrders, setTotalOrders] = useState(0);
+    const [payingOrderId, setPayingOrderId] = useState(null);
+
     const pageSize = 10;
 
     const navigate = useNavigate();
@@ -63,41 +65,55 @@ const AssociateOrders = () => {
 
     const handlePayBalance = async (order) => {
         console.log("Paying balance for:", order.OrderID);
-        // navigate(`/associate/orders/${order.OrderID}?payBalance=true`);
-
-
-        const data = {
-
-            QuoteID: order.QuoteID,
-            totalAmount: order.TotalAmount,
-            govFee: order.GovtFee,
-            vendorFee: order.VendorFee,
-            contractorFee: order.ContractorFee,
-            profFee: order.ProfessionalFee,
-            customer: order.Customer,
-            servicePayment: order.ServicePayment, // array of service breakdowns
-            StateID: order.StateID, // needed for external payment calculation
-            IsInternal: order.IsInternal, // needed to determine payment calculation method
-
-        }
-
-        console.log({ data });
-
 
         try {
+            setPayingOrderId(order.OrderID); // ✅ Start loading
 
-            const response = await initPayment({
-                OrderID: order.OrderID,
-                Amount: order.BalanceAmount,
-                PaymentMode: "Online"
-            });
+            const servicePayment = (order.ServiceDetails || []).map((service) => ({
+                serviceId: service.ServiceID || service.serviceId,
+                vendorFee: Number(service.VendorFee || 0),
+                professionalFee: Number(service.ProfessionalFee || service.ProfFee || 0),
+                contractorFee: Number(service.ContractorFee || 0),
+                govFee: Number(service.GovtFee || 0),
+                gst: Number(service.GstAmount || service.GST || 0),
+                pendingAmount: Number(order.PendingAmount || 0)
+            }));
+
+            const totalPendingAmount = servicePayment.reduce(
+                (sum, service) => sum + Number(service.pendingAmount || 0),
+                0
+            );
+
+            const payload = {
+                QuoteID: order.QuoteID,
+                totalAmount: Number(totalPendingAmount.toFixed(2)),
+                govFee: Number(order.GovtFee || 0),
+                vendorFee: Number(order.VendorFee || 0),
+                contractorFee: Number(order.ContractorFee || 0),
+                profFee: Number(order.ProfessionalFee || 0),
+                customer: {
+                    name: order.CustomerName || "Customer",
+                    email: order.CustomerEmail || order.Email || "test@example.com",
+                    phone: order.CustomerPhone || order.Phone || "9999999999"
+                },
+                servicePayment,
+                StateID: order.StateID || 0,
+                IsInternal: order.IsInternal || 0
+            };
+
+            const response = await initPayment(payload);
+
+            if (response.success && response.paymentUrl) {
+                window.open(response.paymentUrl, "_blank", "noopener,noreferrer");
+            }
 
         } catch (error) {
-
+            console.error("Payment Error:", error);
+        } finally {
+            setPayingOrderId(null); // ✅ Stop loading
         }
-
-
     };
+
 
     const calculateFees = (services) => {
         if (!services || !Array.isArray(services)) return { prof: 0, cont: 0, vend: 0, govt: 0, cgst: 0, sgst: 0, igst: 0, gst: 0 };
@@ -290,12 +306,21 @@ const AssociateOrders = () => {
                                                 {pendingAmount > 0 && (
                                                     <button
                                                         onClick={() => handlePayBalance(order)}
-                                                        className="px-3 py-1 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-md transition"
+                                                        disabled={payingOrderId === order.OrderID}
+                                                        className="px-3 py-1 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-md transition disabled:opacity-70 flex items-center gap-1"
                                                     >
-                                                        Pay Balance
+                                                        {payingOrderId === order.OrderID ? (
+                                                            <>
+                                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                                Processing...
+                                                            </>
+                                                        ) : (
+                                                            "Pay Balance"
+                                                        )}
                                                     </button>
                                                 )}
                                             </td>
+
 
                                             <td className="px-4 py-4 text-center">
                                                 <span className="text-slate-400">1/1</span>
