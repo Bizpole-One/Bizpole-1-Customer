@@ -59,6 +59,46 @@ const AssociateOrders = () => {
         return differenceInDays(new Date(), new Date(date));
     };
 
+
+
+    const handlePayBalance = async (order) => {
+        console.log("Paying balance for:", order.OrderID);
+        // navigate(`/associate/orders/${order.OrderID}?payBalance=true`);
+
+
+        const data = {
+
+            QuoteID: order.QuoteID,
+            totalAmount: order.TotalAmount,
+            govFee: order.GovtFee,
+            vendorFee: order.VendorFee,
+            contractorFee: order.ContractorFee,
+            profFee: order.ProfessionalFee,
+            customer: order.Customer,
+            servicePayment: order.ServicePayment, // array of service breakdowns
+            StateID: order.StateID, // needed for external payment calculation
+            IsInternal: order.IsInternal, // needed to determine payment calculation method
+
+        }
+
+        console.log({ data });
+
+
+        try {
+
+            const response = await initPayment({
+                OrderID: order.OrderID,
+                Amount: order.BalanceAmount,
+                PaymentMode: "Online"
+            });
+
+        } catch (error) {
+
+        }
+
+
+    };
+
     const calculateFees = (services) => {
         if (!services || !Array.isArray(services)) return { prof: 0, cont: 0, vend: 0, govt: 0, cgst: 0, sgst: 0, igst: 0, gst: 0 };
         return services.reduce((acc, s) => {
@@ -158,65 +198,139 @@ const AssociateOrders = () => {
                                 </tr>
                             ) : (
                                 orders.map((order, index) => {
+                                    console.log("sss", order.PendingAmount);
+
                                     const fees = calculateFees(order.ServiceDetails);
+                                    const pendingAmount = Number(order.PendingAmount || 0);
+
                                     return (
                                         <tr key={order.OrderID} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-4 py-4 text-center text-slate-400">{(currentPage - 1) * pageSize + index + 1}</td>
+                                            <td className="px-4 py-4 text-center text-slate-400">
+                                                {(currentPage - 1) * pageSize + index + 1}
+                                            </td>
+
                                             <td
                                                 className="px-4 py-4 font-bold text-[#4b49ac] hover:underline cursor-pointer whitespace-nowrap"
                                                 onClick={() => navigate(`/associate/orders/${order.OrderID}`)}
                                             >
                                                 {order.OrderCodeId || `--`}
                                             </td>
+
                                             <td className="px-4 py-4 text-slate-500 whitespace-nowrap">
-                                                {order.OrderCreatedAt ? format(new Date(order.OrderCreatedAt), "dd/MM/yyyy") : "--"}
+                                                {order.OrderCreatedAt
+                                                    ? format(new Date(order.OrderCreatedAt), "dd/MM/yyyy")
+                                                    : "--"}
                                             </td>
-                                            <td className="px-4 py-4 text-slate-600">{order.QuoteCRE_EmployeeName || "admin"}</td>
-                                            <td className="px-4 py-4 text-blue-600 font-medium hover:underline cursor-pointer">{order.CompanyName}</td>
-                                            <td className="px-4 py-4 text-slate-600">{order.CustomerName}</td>
+
+                                            <td className="px-4 py-4 text-slate-600">
+                                                {order.QuoteCRE_EmployeeName || "admin"}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-blue-600 font-medium hover:underline cursor-pointer">
+                                                {order.CompanyName}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-slate-600">
+                                                {order.CustomerName}
+                                            </td>
+
                                             <td className="px-4 py-4">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-bold ${order.OrderStatus === 'Completed' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
+                                                <span
+                                                    className={`px-2 py-1 rounded text-[10px] font-bold ${order.OrderStatus === "Completed"
+                                                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                                        : "bg-blue-50 text-blue-600 border border-blue-100"
+                                                        }`}
+                                                >
                                                     {order.OrderStatus || "In Progress"}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-4 text-center font-medium text-slate-600">{getAgeing(order.OrderCreatedAt)}</td>
-                                            <td className="px-4 py-4 text-right text-slate-600">₹{fees.prof.toLocaleString()}</td>
-                                            <td className="px-4 py-4 text-right text-slate-600">₹{fees.cont.toLocaleString()}</td>
-                                            <td className="px-4 py-4 text-right text-slate-600">₹{fees.vend.toLocaleString()}</td>
-                                            <td className="px-4 py-4 text-right text-slate-600">₹{fees.govt.toLocaleString()}</td>
-                                            <td className="px-4 py-4 text-right text-slate-500">{(fees.cgst || 0).toFixed(2)}</td>
-                                            <td className="px-4 py-4 text-right text-slate-500">{(fees.sgst || 0).toFixed(2)}</td>
-                                            <td className="px-4 py-4 text-right text-slate-500">{(fees.igst || 0).toFixed(2)}</td>
-                                            <td className="px-4 py-4 text-right text-red-500">₹{(order.Discount || 0).toLocaleString()}</td>
-                                            <td className="px-4 py-4 text-right font-bold text-slate-800">₹{(order.ReceivedAmount || 0).toLocaleString()}</td>
+
+                                            <td className="px-4 py-4 text-center font-medium text-slate-600">
+                                                {getAgeing(order.OrderCreatedAt)}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right text-slate-600">
+                                                ₹{fees.prof.toLocaleString()}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right text-slate-600">
+                                                ₹{fees.cont.toLocaleString()}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right text-slate-600">
+                                                ₹{fees.vend.toLocaleString()}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right text-slate-600">
+                                                ₹{fees.govt.toLocaleString()}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right text-slate-500">
+                                                {(fees.cgst || 0).toFixed(2)}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right text-slate-500">
+                                                {(fees.sgst || 0).toFixed(2)}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right text-slate-500">
+                                                {(fees.igst || 0).toFixed(2)}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right text-red-500">
+                                                ₹{(order.Discount || 0).toLocaleString()}
+                                            </td>
+
+                                            <td className="px-4 py-4 text-right font-bold text-slate-800">
+                                                ₹{(order.ReceivedAmount || 0).toLocaleString()}
+                                            </td>
+
+                                            {/* ✅ Pending Amount + Pay Balance Button */}
+                                            <td className="px-4 py-4 text-center">
+                                                {pendingAmount > 0 && (
+                                                    <button
+                                                        onClick={() => handlePayBalance(order)}
+                                                        className="px-3 py-1 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-md transition"
+                                                    >
+                                                        Pay Balance
+                                                    </button>
+                                                )}
+                                            </td>
+
                                             <td className="px-4 py-4 text-center">
                                                 <span className="text-slate-400">1/1</span>
                                             </td>
+
                                             <td className="px-4 py-4">
-                                                <span className={`px-2 py-0.5 rounded text-[9px] font-medium ${!order.IsIndividual ? 'bg-purple-50 text-purple-600' : 'bg-slate-50 text-slate-600'}`}>
+                                                <span
+                                                    className={`px-2 py-0.5 rounded text-[9px] font-medium ${!order.IsIndividual
+                                                        ? "bg-purple-50 text-purple-600"
+                                                        : "bg-slate-50 text-slate-600"
+                                                        }`}
+                                                >
                                                     {order.IsIndividual ? "Individual" : "Package"}
                                                 </span>
                                             </td>
+
                                             <td className="px-4 py-4 text-slate-400">
-                                                {order.OrderCreatedAt ? format(new Date(order.OrderCreatedAt), "dd/MM/yyyy") : "-"}
+                                                {order.OrderCreatedAt
+                                                    ? format(new Date(order.OrderCreatedAt), "dd/MM/yyyy")
+                                                    : "-"}
                                             </td>
+
                                             <td className="px-4 py-4 text-slate-400">
-                                                {order.OrderUpdatedAt ? format(new Date(order.OrderUpdatedAt), "dd/MM/yyyy") : "-"}
+                                                {order.OrderUpdatedAt
+                                                    ? format(new Date(order.OrderUpdatedAt), "dd/MM/yyyy")
+                                                    : "-"}
                                             </td>
-                                            <td className="px-4 py-4 text-slate-500">{order.CreatedBy || "-"}</td>
-                                            {/* <td className="px-4 py-4 text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <button className="p-1.5 text-slate-400 hover:text-[#4b49ac] hover:bg-slate-100 rounded-lg transition-all">
-                                                        <Edit2 className="w-3 h-3" />
-                                                    </button>
-                                                    <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                                                        <Trash2 className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            </td> */}
+
+                                            <td className="px-4 py-4 text-slate-500">
+                                                {order.CreatedBy || "-"}
+                                            </td>
                                         </tr>
                                     );
                                 })
+
                             )}
                         </tbody>
                     </table>

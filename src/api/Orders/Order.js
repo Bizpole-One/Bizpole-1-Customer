@@ -15,6 +15,18 @@ export const listOrders = async (filters) => {
     throw error;
   }
 };
+export const initPayment = async (payload) => {
+  try {
+    const response = await axiosInstance.post("https://api.bizpoleindia.in/initiate", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error initPayment:", error);
+    throw error;
+  }
+};
+
+
+
 
 /**
  * Get order details by ID
