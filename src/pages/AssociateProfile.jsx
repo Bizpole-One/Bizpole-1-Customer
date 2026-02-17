@@ -4,6 +4,7 @@ import { getSecureItem } from '../utils/secureStorage';
 import axiosInstance from '../api/axiosInstance';
 import { getAssociateById, getAssociateDocuments, uploadAssociateDocuments } from '../api/AssociateApi';
 import { getDistrictsByState } from '../utils/constants';
+import Select from "react-select"
 
 const AssociateProfile = () => {
     const user = getSecureItem("partnerUser");
@@ -13,7 +14,7 @@ const AssociateProfile = () => {
     const [documents, setDocuments] = useState([]);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editFormData, setEditFormData] = useState({
-        AssociateID:"",
+        AssociateID: "",
         AssociateName: '',
         Email: '',
         Mobile: '',
@@ -73,7 +74,7 @@ const AssociateProfile = () => {
     // Open edit modal and populate form
     const handleEditClick = () => {
         setEditFormData({
-            AssociateID : user.id,
+            AssociateID: user.id,
             AssociateName: userData?.AssociateName || '',
             Email: userData?.Email || '',
             Mobile: userData?.Mobile || '',
@@ -189,169 +190,228 @@ const AssociateProfile = () => {
 
             {/* Edit Modal */}
             {/* Edit Modal */}
-       {/* Edit Modal */}
-{isEditModalOpen && (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h2 className="text-xl font-bold text-slate-900">Edit Profile</h2>
-                <button
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                >
-                    <X className="w-5 h-5 text-slate-500" />
-                </button>
-            </div>
+            {/* Edit Modal */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                            <h2 className="text-xl font-bold text-slate-900">Edit Profile</h2>
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
 
-            {/* Modal Body */}
-            <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Full Name</label>
-                        <input
-                            type="text"
-                            name="AssociateName"
-                            value={editFormData.AssociateName}
-                            onChange={handleInputChange}
-                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
-                            placeholder="Enter full name"
-                        />
-                    </div>
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700">Full Name</label>
+                                    <input
+                                        type="text"
+                                        name="AssociateName"
+                                        value={editFormData.AssociateName}
+                                        onChange={handleInputChange}
+                                        className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
+                                        placeholder="Enter full name"
+                                    />
+                                </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Email Address</label>
-                        <input
-                            type="email"
-                            name="Email"
-                            value={editFormData.Email}
-                            onChange={handleInputChange}
-                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
-                            placeholder="Enter email"
-                        />
-                    </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                                    <input
+                                        type="email"
+                                        name="Email"
+                                        value={editFormData.Email}
+                                        onChange={handleInputChange}
+                                        className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
+                                        placeholder="Enter email"
+                                    />
+                                </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Phone Number</label>
-                        <input
-                            type="tel"
-                            name="Mobile"
-                            value={editFormData.Mobile}
-                            onChange={handleInputChange}
-                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
-                            placeholder="Enter phone number"
-                        />
-                    </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700">Phone Number</label>
+                                    <input
+                                        type="tel"
+                                        name="Mobile"
+                                        value={editFormData.Mobile}
+                                        onChange={handleInputChange}
+                                        className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
+                                        placeholder="Enter phone number"
+                                    />
+                                </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">State</label>
-                        <select
-                            name="State"
-                            value={editFormData.State}
-                            onChange={handleInputChange}
-                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent bg-white"
-                        >
-                            <option value="">Select State</option>
-                            <option value="Andhra Pradesh">Andhra Pradesh</option>
-                            <option value="Arunachal Pradesh">Arunachal Pradesh</option>
-                            <option value="Assam">Assam</option>
-                            <option value="Bihar">Bihar</option>
-                            <option value="Chhattisgarh">Chhattisgarh</option>
-                            <option value="Goa">Goa</option>
-                            <option value="Gujarat">Gujarat</option>
-                            <option value="Haryana">Haryana</option>
-                            <option value="Himachal Pradesh">Himachal Pradesh</option>
-                            <option value="Jharkhand">Jharkhand</option>
-                            <option value="Karnataka">Karnataka</option>
-                            <option value="Kerala">Kerala</option>
-                            <option value="Madhya Pradesh">Madhya Pradesh</option>
-                            <option value="Maharashtra">Maharashtra</option>
-                            <option value="Manipur">Manipur</option>
-                            <option value="Meghalaya">Meghalaya</option>
-                            <option value="Mizoram">Mizoram</option>
-                            <option value="Nagaland">Nagaland</option>
-                            <option value="Odisha">Odisha</option>
-                            <option value="Punjab">Punjab</option>
-                            <option value="Rajasthan">Rajasthan</option>
-                            <option value="Sikkim">Sikkim</option>
-                            <option value="Tamil Nadu">Tamil Nadu</option>
-                            <option value="Telangana">Telangana</option>
-                            <option value="Tripura">Tripura</option>
-                            <option value="Uttar Pradesh">Uttar Pradesh</option>
-                            <option value="Uttarakhand">Uttarakhand</option>
-                            <option value="West Bengal">West Bengal</option>
-                            <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
-                            <option value="Chandigarh">Chandigarh</option>
-                            <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
-                            <option value="Delhi">Delhi</option>
-                            <option value="Jammu and Kashmir">Jammu and Kashmir</option>
-                            <option value="Ladakh">Ladakh</option>
-                            <option value="Lakshadweep">Lakshadweep</option>
-                            <option value="Puducherry">Puducherry</option>
-                        </select>
-                    </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        State
+                                    </label>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">District</label>
-                        <select
-                            name="District"
-                            value={editFormData.District}
-                            onChange={handleInputChange}
-                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent bg-white"
-                            disabled={!editFormData.State}
-                        >
-                            <option value="">Select District</option>
-                            {getDistrictsByState(editFormData.State).map((district) => (
-                                <option key={district} value={district}>
-                                    {district}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                                    <Select
+                                        options={[
+                                            "Andhra Pradesh",
+                                            "Arunachal Pradesh",
+                                            "Assam",
+                                            "Bihar",
+                                            "Chhattisgarh",
+                                            "Goa",
+                                            "Gujarat",
+                                            "Haryana",
+                                            "Himachal Pradesh",
+                                            "Jharkhand",
+                                            "Karnataka",
+                                            "Kerala",
+                                            "Madhya Pradesh",
+                                            "Maharashtra",
+                                            "Manipur",
+                                            "Meghalaya",
+                                            "Mizoram",
+                                            "Nagaland",
+                                            "Odisha",
+                                            "Punjab",
+                                            "Rajasthan",
+                                            "Sikkim",
+                                            "Tamil Nadu",
+                                            "Telangana",
+                                            "Tripura",
+                                            "Uttar Pradesh",
+                                            "Uttarakhand",
+                                            "West Bengal",
+                                            "Andaman and Nicobar Islands",
+                                            "Chandigarh",
+                                            "Dadra and Nagar Haveli and Daman and Diu",
+                                            "Delhi",
+                                            "Jammu and Kashmir",
+                                            "Ladakh",
+                                            "Lakshadweep",
+                                            "Puducherry",
+                                        ].map((state) => ({
+                                            value: state,
+                                            label: state,
+                                        }))}
+                                        value={
+                                            editFormData.State
+                                                ? { value: editFormData.State, label: editFormData.State }
+                                                : null
+                                        }
+                                        onChange={(selected) =>
+                                            setEditFormData({
+                                                ...editFormData,
+                                                State: selected ? selected.value : "",
+                                                District: "",
+                                            })
+                                        }
+                                        placeholder="Select State"
+                                        isSearchable
+                                        styles={{
+                                            control: (base, state) => ({
+                                                ...base,
+                                                padding: "4px",
+                                                borderRadius: "0.5rem", // rounded-lg
+                                                borderColor: "#cbd5e1", // slate-300
+                                                boxShadow: state.isFocused
+                                                    ? "0 0 0 2px #009068"
+                                                    : "none",
+                                                "&:hover": {
+                                                    borderColor: "#009068",
+                                                },
+                                            }),
+                                        }}
+                                    />
+                                </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Profession</label>
-                        <input
-                            type="text"
-                            name="Profession"
-                            value={editFormData.Profession}
-                            onChange={handleInputChange}
-                            className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
-                            placeholder="Enter profession"
-                        />
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        District
+                                    </label>
+
+                                    <Select
+                                        options={getDistrictsByState(editFormData.State).map(
+                                            (district) => ({
+                                                value: district,
+                                                label: district,
+                                            })
+                                        )}
+                                        value={
+                                            editFormData.District
+                                                ? { value: editFormData.District, label: editFormData.District }
+                                                : null
+                                        }
+                                        onChange={(selected) =>
+                                            setEditFormData({
+                                                ...editFormData,
+                                                District: selected ? selected.value : "",
+                                            })
+                                        }
+                                        placeholder="Select District"
+                                        isSearchable
+                                        isDisabled={!editFormData.State}
+                                        styles={{
+                                            control: (base, state) => ({
+                                                ...base,
+                                                padding: "4px",
+                                                borderRadius: "0.5rem",
+                                                borderColor: "#cbd5e1",
+                                                backgroundColor: !editFormData.State
+                                                    ? "#f1f5f9" // disabled look
+                                                    : "white",
+                                                boxShadow: state.isFocused
+                                                    ? "0 0 0 2px #009068"
+                                                    : "none",
+                                                "&:hover": {
+                                                    borderColor: "#009068",
+                                                },
+                                            }),
+                                        }}
+                                    />
+                                </div>
+
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700">Profession</label>
+                                    <input
+                                        type="text"
+                                        name="Profession"
+                                        value={editFormData.Profession}
+                                        onChange={handleInputChange}
+                                        className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009068] focus:border-transparent"
+                                        placeholder="Enter profession"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveProfile}
+                                disabled={isSaving}
+                                className="bg-[#009068] hover:bg-[#007a58] text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Save Changes
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
-                <button
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors"
-                >
-                    Cancel
-                </button>
-                <button
-                    onClick={handleSaveProfile}
-                    disabled={isSaving}
-                    className="bg-[#009068] hover:bg-[#007a58] text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isSaving ? (
-                        <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <CheckCircle2 className="w-4 h-4" />
-                            Save Changes
-                        </>
-                    )}
-                </button>
-            </div>
-        </div>
-    </div>
-)}
+            )}
 
             <div className="flex justify-between items-center mb-8">
                 <div>

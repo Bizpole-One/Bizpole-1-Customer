@@ -5,6 +5,7 @@ import locationData from "../../utils/statesAndDistricts.json";
 import AssociateApi from "../../api/AssociateApi";
 import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
 import { useNavigate } from "react-router-dom";
+import Select from "react-select";
 
 
 const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
@@ -436,23 +437,52 @@ const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                                     <label className="text-sm font-semibold text-gray-700">
                                         <span className="text-red-500 mr-1">*</span> State
                                     </label>
-                                    <div className="relative">
-                                        <select
-                                            name="state"
-                                            value={formData.state}
-                                            onChange={handleChange}
-                                            className={`w-full appearance-none px-4 py-3 rounded-2xl border ${errors.state ? 'border-red-400 focus:ring-red-100' : 'border-yellow-400 focus:ring-yellow-100'} focus:outline-none focus:ring-2 transition-all text-gray-600 bg-white`}
-                                        >
-                                            <option value="" disabled>Select state...</option>
-                                            {locationData.states.map((state) => (
-                                                <option key={state.stateId} value={state.stateName}>
-                                                    {state.stateName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                                    </div>
-                                    {errors.state && <span className="text-xs text-red-500 ml-2">{errors.state}</span>}
+
+                                    <Select
+                                        options={locationData.states.map((state) => ({
+                                            value: state.stateName,
+                                            label: state.stateName,
+                                        }))}
+                                        value={
+                                            formData.state
+                                                ? { value: formData.state, label: formData.state }
+                                                : null
+                                        }
+                                        onChange={(selected) =>
+                                            setFormData({
+                                                ...formData,
+                                                state: selected ? selected.value : "",
+                                                district: "",
+                                            })
+                                        }
+                                        placeholder="Select state..."
+                                        isSearchable
+                                        styles={{
+                                            control: (base, state) => ({
+                                                ...base,
+                                                borderRadius: "1rem", // rounded-2xl
+                                                padding: "4px",
+                                                borderColor: errors.state
+                                                    ? "#f87171" // red-400
+                                                    : "#facc15", // yellow-400
+                                                boxShadow: state.isFocused
+                                                    ? errors.state
+                                                        ? "0 0 0 2px #fee2e2" // red-100
+                                                        : "0 0 0 2px #fef9c3" // yellow-100
+                                                    : "none",
+                                                "&:hover": {
+                                                    borderColor: errors.state ? "#f87171" : "#facc15",
+                                                },
+                                            }),
+                                        }}
+                                    />
+
+
+                                    {errors.state && (
+                                        <span className="text-xs text-red-500 ml-2">
+                                            {errors.state}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* District */}
@@ -460,26 +490,55 @@ const PartnerSignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                                     <label className="text-sm font-semibold text-gray-700">
                                         <span className="text-red-500 mr-1">*</span> District
                                     </label>
-                                    <div className="relative">
-                                        <select
-                                            name="district"
-                                            value={formData.district}
-                                            onChange={handleChange}
-                                            disabled={!formData.state}
-                                            className={`w-full appearance-none px-4 py-3 rounded-2xl border ${errors.district ? 'border-red-400 focus:ring-red-100' : 'border-yellow-400 focus:ring-yellow-100'} focus:outline-none focus:ring-2 transition-all text-gray-600 bg-white disabled:bg-gray-50 disabled:border-gray-200`}
-                                        >
-                                            <option value="" disabled>
-                                                {formData.state ? "Select district..." : "Select state first"}
-                                            </option>
-                                            {availableDistricts.map((district) => (
-                                                <option key={district.districtId} value={district.districtName}>
-                                                    {district.districtName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                                    </div>
-                                    {errors.district && <span className="text-xs text-red-500 ml-2">{errors.district}</span>}
+
+                                    <Select
+                                        options={availableDistricts.map((district) => ({
+                                            value: district.districtName,
+                                            label: district.districtName,
+                                        }))}
+                                        value={
+                                            formData.district
+                                                ? { value: formData.district, label: formData.district }
+                                                : null
+                                        }
+                                        onChange={(selected) =>
+                                            setFormData({
+                                                ...formData,
+                                                district: selected ? selected.value : "",
+                                            })
+                                        }
+                                        placeholder={
+                                            formData.state ? "Select district..." : "Select state first"
+                                        }
+                                        isSearchable
+                                        isDisabled={!formData.state}
+                                        styles={{
+                                            control: (base, state) => ({
+                                                ...base,
+                                                borderRadius: "1rem",
+                                                padding: "4px",
+                                                backgroundColor: !formData.state ? "#f9fafb" : "white",
+                                                borderColor: errors.district
+                                                    ? "#f87171"
+                                                    : "#facc15",
+                                                boxShadow: state.isFocused
+                                                    ? errors.district
+                                                        ? "0 0 0 2px #fee2e2"
+                                                        : "0 0 0 2px #fef9c3"
+                                                    : "none",
+                                                "&:hover": {
+                                                    borderColor: errors.district ? "#f87171" : "#facc15",
+                                                },
+                                            }),
+                                        }}
+                                    />
+
+
+                                    {errors.district && (
+                                        <span className="text-xs text-red-500 ml-2">
+                                            {errors.district}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Preferred Language */}

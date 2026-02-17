@@ -293,8 +293,8 @@ const AssociateQuotes = () => {
                                 ) : (
                                     filteredDeals.map((deal, index) => (
 
-                                        console.log("LLLLL",{deal}),
-                                        
+                                        console.log("LLLLL", { deal }),
+
                                         <tr key={deal.id} className="hover:bg-slate-50/50 transition-colors cursor-default">
                                             <td className="px-6 py-4 text-slate-400 text-xs font-medium">{index + 1}</td>
                                             <td className="px-6 py-4 text-slate-400 text-xs font-medium uppercase">{deal.DealCode || `--`}</td>
@@ -327,8 +327,8 @@ const AssociateQuotes = () => {
                                             <td className="px-4 py-3">
                                                 <span
                                                     className={`px-2 py-0.5 rounded text-[10px] font-medium ${Number(deal.isIndividual) === 1
-                                                            ? "bg-blue-50 text-blue-600 border border-blue-100"
-                                                            : "bg-purple-50 text-purple-600 border border-purple-100"
+                                                        ? "bg-blue-50 text-blue-600 border border-blue-100"
+                                                        : "bg-purple-50 text-purple-600 border border-purple-100"
                                                         }`}
                                                 >
                                                     {Number(deal.isIndividual) === 1 ? "Individual" : "Package"}
@@ -426,7 +426,7 @@ const AssociateQuotes = () => {
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex justify-end gap-2">
                                                     <button onClick={() => handleViewQuote(quote)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-md">
-                                                        <Eye className="w-4 h-4 text-slate-600" />
+                                                        Approve
                                                     </button>
                                                     <button onClick={() => handleDownloadQuote(quote)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-md">
                                                         <Download className="w-4 h-4 text-slate-600" />

@@ -248,23 +248,26 @@ const AssociateReceipts = () => {
                                 <th className="px-4 py-4 text-center">S.No</th>
                                 <th className="px-4 py-4">Payment ID</th>
                                 <th className="px-4 py-4">Quote ID</th>
+                                <th className="px-4 py-4">Company Name</th>
                                 <th className="px-4 py-4 text-right">Total Amount</th>
                                 <th className="px-4 py-4 text-right">Gov Fee</th>
                                 <th className="px-4 py-4 text-right">Vendor Fee</th>
                                 <th className="px-4 py-4 text-right">Contractor Fee</th>
                                 <th className="px-4 py-4 text-right">Professional Fee</th>
                                 <th className="px-4 py-4">Transaction ID</th>
-                                <th className="px-4 py-4">Payment Status</th>
+                                <th className="px-4 py-4 text-center">Payment Status</th>
                                 <th className="px-4 py-4">Created By</th>
-                                <th className="px-4 py-4">Created At</th>
-                                <th className="px-4 py-4">Transaction Date</th>
+                                <th className="px-4 py-4 whitespace-nowrap">Created At</th>
+                                <th className="px-4 py-4 whitespace-nowrap">Transaction Date</th>
                                 <th className="px-4 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
+
+
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="14" className="px-6 py-12 text-center text-slate-400">
+                                    <td colSpan="15" className="px-6 py-12 text-center text-slate-400">
                                         <div className="flex flex-col items-center gap-2">
                                             <Loader2 className="w-6 h-6 animate-spin text-[#4b49ac]" />
                                             <span>Loading receipts...</span>
@@ -273,36 +276,89 @@ const AssociateReceipts = () => {
                                 </tr>
                             ) : receipts.length === 0 ? (
                                 <tr>
-                                    <td colSpan="14" className="px-6 py-12 text-center text-slate-400">
+                                    <td colSpan="15" className="px-6 py-12 text-center text-slate-400">
                                         No receipts found
                                     </td>
                                 </tr>
                             ) : (
                                 receipts.map((receipt, index) => (
-                                    <tr key={receipt.PaymentID} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-4 py-4 text-center text-slate-400">{(currentPage - 1) * pageSize + index + 1}</td>
-                                        <td className="px-4 py-4 font-bold text-slate-700">{receipt.PaymentID}</td>
-                                        <td className="px-4 py-4 text-slate-500">{receipt.QuoteID}</td>
-                                        <td className="px-4 py-4 text-right font-bold text-slate-800">₹{parseFloat(receipt.TotalAmount || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-4 text-right text-slate-600">₹{parseFloat(receipt.GovFee || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-4 text-right text-slate-600">₹{parseFloat(receipt.VendorFee || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-4 text-right text-slate-600">₹{parseFloat(receipt.ContractorFee || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-4 text-right text-slate-600">₹{parseFloat(receipt.ProfessionalFee || receipt.ProfFee || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-4 text-slate-600">{receipt.TransactionID}</td>
+                                    <tr
+                                        key={receipt.PaymentID}
+                                        className="hover:bg-slate-50/50 transition-colors"
+                                    >
+                                        <td className="px-4 py-4 text-center text-slate-400">
+                                            {(currentPage - 1) * pageSize + index + 1}
+                                        </td>
+
+                                        <td className="px-4 py-4 font-bold text-slate-700">
+                                            {receipt.PaymentID}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-slate-500">
+                                            {receipt.QuoteID}
+                                        </td>
+
                                         <td className="px-4 py-4">
-                                            <span className={`px-2 py-1 rounded text-[10px] font-bold ${(receipt.PaymentStatus || '').toLowerCase() === 'success' ? 'text-green-600' : 'text-orange-600'
-                                                }`}>
-                                                {receipt.PaymentStatus || 'pending'}
+                                            <span className="px-2 py-1 bg-blue-50 text-blue-700 font-semibold rounded-md text-xs">
+                                                {receipt.CompanyName || "N/A"}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-4 text-slate-600">{receipt.CreatedByName || 'N/A'}</td>
-                                        <td className="px-4 py-4 text-slate-500 whitespace-nowrap">
-                                            {receipt.PaymentDate ? format(new Date(receipt.PaymentDate), "dd/MM/yyyy") : "--"}
+
+                                        <td className="px-4 py-4 text-right font-bold text-slate-800">
+                                            ₹{parseFloat(receipt.TotalAmount || 0).toFixed(2)}
                                         </td>
-                                        <td className="px-4 py-4 text-slate-500 whitespace-nowrap">
-                                            {/* Assuming TransactionDate exists or using CreatedAt/PaymentDate */}
-                                            {receipt.TransactionDate ? format(new Date(receipt.TransactionDate), "dd/MM/yyyy") : (receipt.PaymentDate ? format(new Date(receipt.PaymentDate), "dd/MM/yyyy") : "--")}
+
+                                        <td className="px-4 py-4 text-right text-slate-600">
+                                            ₹{parseFloat(receipt.GovFee || 0).toFixed(2)}
                                         </td>
+
+                                        <td className="px-4 py-4 text-right text-slate-600">
+                                            ₹{parseFloat(receipt.VendorFee || 0).toFixed(2)}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-right text-slate-600">
+                                            ₹{parseFloat(receipt.ContractorFee || 0).toFixed(2)}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-right text-slate-600">
+                                            ₹{parseFloat(
+                                                receipt.ProfessionalFee || receipt.ProfFee || 0
+                                            ).toFixed(2)}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-slate-600">
+                                            {receipt.TransactionID}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-center">
+                                            <span
+                                                className={`px-2 py-1 rounded text-[10px] font-bold ${(receipt.PaymentStatus || "").toLowerCase() === "success"
+                                                        ? "text-green-600"
+                                                        : "text-orange-600"
+                                                    }`}
+                                            >
+                                                {receipt.PaymentStatus || "pending"}
+                                            </span>
+                                        </td>
+
+                                        <td className="px-4 py-4 text-slate-600">
+                                            {receipt.CreatedByName || "N/A"}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-slate-500 whitespace-nowrap">
+                                            {receipt.PaymentDate
+                                                ? format(new Date(receipt.PaymentDate), "dd/MM/yyyy")
+                                                : "--"}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-slate-500 whitespace-nowrap">
+                                            {receipt.TransactionDate
+                                                ? format(new Date(receipt.TransactionDate), "dd/MM/yyyy")
+                                                : receipt.PaymentDate
+                                                    ? format(new Date(receipt.PaymentDate), "dd/MM/yyyy")
+                                                    : "--"}
+                                        </td>
+
                                         <td className="px-4 py-4 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button
@@ -311,14 +367,17 @@ const AssociateReceipts = () => {
                                                 >
                                                     Receipt
                                                 </button>
+
                                                 <button
                                                     onClick={() => downloadPDF(receipt)}
-                                                    className="px-3 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1">
+                                                    className="px-3 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                                                >
                                                     Download
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
+
                                 ))
                             )}
                         </tbody>
@@ -330,27 +389,39 @@ const AssociateReceipts = () => {
                     <p className="text-xs text-slate-500">
                         Showing page {currentPage} of {totalPages || 1}
                     </p>
+
                     <div className="flex gap-2">
                         <button
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            onClick={() =>
+                                setCurrentPage((prev) => Math.max(1, prev - 1))
+                            }
                             disabled={currentPage === 1}
                             className="p-2 border border-slate-200 rounded-lg disabled:opacity-50 hover:bg-slate-50 transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
+
                         <div className="flex gap-1">
                             {[...Array(Math.min(5, totalPages))].map((_, i) => (
                                 <button
                                     key={i}
                                     onClick={() => setCurrentPage(i + 1)}
-                                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${currentPage === i + 1 ? 'bg-[#f59e0b] text-white' : 'hover:bg-slate-50 text-slate-600 border border-slate-200'}`}
+                                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${currentPage === i + 1
+                                        ? "bg-[#f59e0b] text-white"
+                                        : "hover:bg-slate-50 text-slate-600 border border-slate-200"
+                                        }`}
                                 >
                                     {i + 1}
                                 </button>
                             ))}
                         </div>
+
                         <button
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            onClick={() =>
+                                setCurrentPage((prev) =>
+                                    Math.min(totalPages, prev + 1)
+                                )
+                            }
                             disabled={currentPage === totalPages || totalPages === 0}
                             className="p-2 border border-slate-200 rounded-lg disabled:opacity-50 hover:bg-slate-50 transition-colors"
                         >
@@ -359,6 +430,7 @@ const AssociateReceipts = () => {
                     </div>
                 </div>
             </div>
+
 
             {/* Receipt Modal */}
             {modalOpen && (

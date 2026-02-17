@@ -4,6 +4,7 @@ import { X, ChevronDown, Loader2, Calendar } from "lucide-react";
 import locationData from "../../utils/statesAndDistricts.json";
 import DealsApi from "../../api/DealsApi";
 import { getSecureItem } from "../../utils/secureStorage";
+import Select from "react-select";
 
 const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
     console.log("AddDealModal deal prop:", deal);
@@ -11,7 +12,7 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [availableDistricts, setAvailableDistricts] = useState([]);
     const [errors, setErrors] = useState({});
-        const [dealType, setDealType] = useState("Individual");
+    const [dealType, setDealType] = useState("Individual");
 
 
     const [formData, setFormData] = useState({
@@ -321,20 +322,20 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-     setFormData((prev) => {
-        const updatedData = { ...prev, [name]: value };
+        setFormData((prev) => {
+            const updatedData = { ...prev, [name]: value };
 
-        // 👇 If serviceType changes, also update dealType
-        if (name === "serviceType") {
-            updatedData.dealType =
-                value === "individual" ? "Individual" : "Package";
-        }
+            // 👇 If serviceType changes, also update dealType
+            if (name === "serviceType") {
+                updatedData.dealType =
+                    value === "individual" ? "Individual" : "Package";
+            }
 
-        return updatedData;
-    });
+            return updatedData;
+        });
 
 
-        
+
 
         if (errors[name]) {
             setErrors((prev) => {
@@ -541,7 +542,7 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
                         isAssociate: true,
                     },
                     dealType: formData.serviceType === "individual" ? "Individual" : "Package",
-                     isIndividual: formData.serviceType === "individual" ? 1 : 0,
+                    isIndividual: formData.serviceType === "individual" ? 1 : 0,
                     serviceType: formData.serviceType,
                     franchiseeId: user.FranchiseeID || 1,
                     employeeId: user.EmployeeID || 9,
@@ -679,53 +680,71 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="relative">
+                                    {/* State */}
+                                    <div>
                                         <label className="text-sm font-medium text-gray-700 block mb-1">
                                             State
                                         </label>
-                                        <select
-                                            name="state"
-                                            value={formData.state}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] appearance-none"
-                                        >
-                                            <option value="">Select State</option>
-                                            {locationData.states.map((s) => (
-                                                <option key={s.stateId} value={s.stateName}>
-                                                    {s.stateName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
+
+                                        <Select
+                                            options={locationData.states.map((s) => ({
+                                                value: s.stateName,
+                                                label: s.stateName,
+                                            }))}
+                                            value={
+                                                formData.state
+                                                    ? { value: formData.state, label: formData.state }
+                                                    : null
+                                            }
+                                            onChange={(selected) => {
+                                                setFormData({
+                                                    ...formData,
+                                                    state: selected ? selected.value : "",
+                                                    district: "",
+                                                });
+                                            }}
+                                            placeholder="Search or select state"
+                                            isSearchable
+                                            className="react-select-container"
+                                            classNamePrefix="react-select"
+                                        />
+
                                         {errors.state && (
-                                            <p className="text-xs text-red-500 mt-1">
-                                                {errors.state}
-                                            </p>
+                                            <p className="text-xs text-red-500 mt-1">{errors.state}</p>
                                         )}
                                     </div>
-                                    <div className="relative">
+
+                                    {/* District */}
+                                    <div>
                                         <label className="text-sm font-medium text-gray-700 block mb-1">
                                             District
                                         </label>
-                                        <select
-                                            name="district"
-                                            value={formData.district}
-                                            onChange={handleChange}
-                                            disabled={!formData.state}
-                                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] appearance-none disabled:bg-gray-50"
-                                        >
-                                            <option value="">Select District</option>
-                                            {availableDistricts.map((d) => (
-                                                <option key={d.districtId} value={d.districtName}>
-                                                    {d.districtName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
+
+                                        <Select
+                                            options={availableDistricts.map((d) => ({
+                                                value: d.districtName,
+                                                label: d.districtName,
+                                            }))}
+                                            value={
+                                                formData.district
+                                                    ? { value: formData.district, label: formData.district }
+                                                    : null
+                                            }
+                                            onChange={(selected) => {
+                                                setFormData({
+                                                    ...formData,
+                                                    district: selected ? selected.value : "",
+                                                });
+                                            }}
+                                            placeholder="Search or select district"
+                                            isSearchable
+                                            isDisabled={!formData.state}
+                                            className="react-select-container"
+                                            classNamePrefix="react-select"
+                                        />
+
                                         {errors.district && (
-                                            <p className="text-xs text-red-500 mt-1">
-                                                {errors.district}
-                                            </p>
+                                            <p className="text-xs text-red-500 mt-1">{errors.district}</p>
                                         )}
                                     </div>
                                 </div>
@@ -801,24 +820,33 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
                             >
                                 {/* Service Selection Fields */}
                                 {/* State where you need Service - MOVED BEFORE Service Category */}
-                                <div className="relative">
+                                <div>
                                     <label className="text-sm font-medium text-gray-700 block mb-1">
                                         State where you need Service *
                                     </label>
-                                    <select
-                                        name="serviceState"
-                                        value={formData.serviceState}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] appearance-none"
-                                    >
-                                        <option value="">Select State</option>
-                                        {availableStates.map((state) => (
-                                            <option key={state.ID} value={state.state_name}>
-                                                {state.state_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
+
+                                    <Select
+                                        options={availableStates.map((state) => ({
+                                            value: state.state_name,
+                                            label: state.state_name,
+                                        }))}
+                                        value={
+                                            formData.serviceState
+                                                ? { value: formData.serviceState, label: formData.serviceState }
+                                                : null
+                                        }
+                                        onChange={(selected) =>
+                                            setFormData({
+                                                ...formData,
+                                                serviceState: selected ? selected.value : "",
+                                            })
+                                        }
+                                        placeholder="Search or select state"
+                                        isSearchable
+                                        className="react-select-container"
+                                        classNamePrefix="react-select"
+                                    />
+
                                     {errors.serviceState && (
                                         <p className="text-xs text-red-500 mt-1">
                                             {errors.serviceState}
@@ -876,33 +904,46 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
                                 {formData.serviceType === "individual" ? (
                                     <>
                                         {/* Service Category - Only for Individual Services */}
-                                        <div className="relative">
+                                        <div>
                                             <label className="text-sm font-medium text-gray-700 block mb-1">
                                                 Service Category *
                                             </label>
-                                            <select
-                                                name="serviceCategory"
-                                                value={formData.serviceCategory}
-                                                onChange={handleChange}
-                                                disabled={!formData.serviceState}
-                                                className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] appearance-none disabled:bg-gray-50 disabled:cursor-not-allowed"
-                                            >
-                                                <option value="">Select Service Category</option>
-                                                {serviceCategories.map((category) => (
-                                                    <option
-                                                        key={category.CategoryID}
-                                                        value={category.CategoryID}
-                                                    >
-                                                        {category.CategoryName}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
+
+                                            <Select
+                                                options={serviceCategories.map((category) => ({
+                                                    value: category.CategoryID,
+                                                    label: category.CategoryName,
+                                                }))}
+                                                value={
+                                                    formData.serviceCategory
+                                                        ? {
+                                                            value: formData.serviceCategory,
+                                                            label:
+                                                                serviceCategories.find(
+                                                                    (c) => c.CategoryID === formData.serviceCategory
+                                                                )?.CategoryName || "",
+                                                        }
+                                                        : null
+                                                }
+                                                onChange={(selected) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        serviceCategory: selected ? selected.value : "",
+                                                    })
+                                                }
+                                                placeholder="Search or select service category"
+                                                isSearchable
+                                                isDisabled={!formData.serviceState}
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                            />
+
                                             {errors.serviceCategory && (
                                                 <p className="text-xs text-red-500 mt-1">
                                                     {errors.serviceCategory}
                                                 </p>
                                             )}
+
                                             {!formData.serviceState && (
                                                 <p className="text-xs text-gray-500 mt-1">
                                                     Please select a state first
@@ -1117,57 +1158,87 @@ const AddDealModal = ({ isOpen, onClose, onSuccess, deal }) => {
                                     />
                                 </div>
 
+
+
+                                {/* Company State */}
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="relative">
+
+                                    {/* Company State */}
+                                    <div>
                                         <label className="text-sm font-medium text-gray-700 block mb-1">
                                             State
                                         </label>
-                                        <select
-                                            name="companyState"
-                                            value={formData.companyState}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] appearance-none"
-                                        >
-                                            <option value="">Select State</option>
-                                            {locationData.states.map((s) => (
-                                                <option key={s.stateId} value={s.stateName}>
-                                                    {s.stateName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
+
+                                        <Select
+                                            options={locationData.states.map((s) => ({
+                                                value: s.stateName,
+                                                label: s.stateName,
+                                            }))}
+                                            value={
+                                                formData.companyState
+                                                    ? { value: formData.companyState, label: formData.companyState }
+                                                    : null
+                                            }
+                                            onChange={(selected) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    companyState: selected ? selected.value : "",
+                                                    companyDistrict: "", // reset district when state changes
+                                                })
+                                            }
+                                            placeholder="Search or select state"
+                                            isSearchable
+                                        />
+
                                         {errors.companyState && (
                                             <p className="text-xs text-red-500 mt-1">
                                                 {errors.companyState}
                                             </p>
                                         )}
                                     </div>
-                                    <div className="relative">
+
+                                    {/* Company District */}
+                                    <div>
                                         <label className="text-sm font-medium text-gray-700 block mb-1">
                                             District
                                         </label>
-                                        <select
-                                            name="companyDistrict"
-                                            value={formData.companyDistrict}
-                                            onChange={handleChange}
-                                            disabled={!formData.companyState}
-                                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4b49ac] appearance-none disabled:bg-gray-50"
-                                        >
-                                            <option value="">Select District</option>
-                                            {availableCompanyDistricts.map((d) => (
-                                                <option key={d.districtId} value={d.districtName}>
-                                                    {d.districtName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
+
+                                        <Select
+                                            options={availableCompanyDistricts.map((d) => ({
+                                                value: d.districtName,
+                                                label: d.districtName,
+                                            }))}
+                                            value={
+                                                formData.companyDistrict
+                                                    ? { value: formData.companyDistrict, label: formData.companyDistrict }
+                                                    : null
+                                            }
+                                            onChange={(selected) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    companyDistrict: selected ? selected.value : "",
+                                                })
+                                            }
+                                            placeholder="Search or select district"
+                                            isSearchable
+                                            isDisabled={!formData.companyState}
+
+                                        />
+
                                         {errors.companyDistrict && (
                                             <p className="text-xs text-red-500 mt-1">
                                                 {errors.companyDistrict}
                                             </p>
                                         )}
                                     </div>
+
+
                                 </div>
+
+
+
+
+
 
                                 <div className="relative">
                                     <label className="text-sm font-medium text-gray-700 block mb-1">
