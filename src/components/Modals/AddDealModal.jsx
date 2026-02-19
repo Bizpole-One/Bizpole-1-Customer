@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronDown, Loader2, Calendar, Eye } from "lucide-react";
+import { X, ChevronDown, Loader2, Calendar, Eye, Phone, PhoneOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import locationData from "../../utils/statesAndDistricts.json";
 import DealsApi from "../../api/DealsApi";
@@ -31,6 +31,7 @@ const AddDealModal = ({ isOpen = true, onClose, onSuccess, deal, initialData }) 
         preferredLanguage: "",
         // followupNote: "",
         closureDate: "",
+        communication: false,
         // Service Details
         serviceType: "individual", // "individual" or "package"
         serviceCategory: "",
@@ -145,6 +146,7 @@ const AddDealModal = ({ isOpen = true, onClose, onSuccess, deal, initialData }) 
                             companyState: d.CompanyState || d.state || "",
                             companyDistrict: d.CompanyDistrict || d.district || "",
                             companyPreferredLanguage: d.CompanyPreferredLanguage || "",
+                            communication: d.communication === 1 || d.communication === true || false,
                         });
                         setDealType(d.dealType || "Individual");
                     }
@@ -177,6 +179,7 @@ const AddDealModal = ({ isOpen = true, onClose, onSuccess, deal, initialData }) 
                         district: "",
                         preferredLanguage: "",
                         closureDate: "",
+                        communication: false,
                         serviceType: "individual",
                         serviceCategory: "",
                         serviceState: "",
@@ -531,6 +534,7 @@ const AddDealModal = ({ isOpen = true, onClose, onSuccess, deal, initialData }) 
                     billingPeriod: formData.billingPeriod,
                     StateService: formData.serviceState,
                     AssociateID: user.id || null,
+                    communication: formData.communication,
                 };
                 const response = await DealsApi.updateDeal(payload);
                 if (response.success) {
@@ -553,6 +557,7 @@ const AddDealModal = ({ isOpen = true, onClose, onSuccess, deal, initialData }) 
                         district: formData.district,
                         preferredLanguage: formData.preferredLanguage,
                         closureDate: formData.closureDate,
+                        communication: formData.communication,
                         isAssociate: true,
                         services: servicesPayload.map(s => ({ ...s, ServiceID: s.serviceId, ServiceName: s.serviceName, CategoryID: s.serviceCategoryId, CategoryName: s.serviceCategory, TotalFee: s.total, ProfessionalFee: s.professionalFee, VendorFee: s.vendorFee, GovernmentFee: s.govtFee, ContractFee: s.contractorFee })),
                     },
@@ -623,6 +628,34 @@ const AddDealModal = ({ isOpen = true, onClose, onSuccess, deal, initialData }) 
                                 exit={{ opacity: 0, x: 20 }}
                                 className="space-y-4"
                             >
+
+                                <div className="bg-gray-50/50 p-4.5 rounded-[20px] flex items-center justify-between border border-gray-100 transition-all duration-300 hover:shadow-md hover:border-indigo-100/50 group">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2.5 rounded-xl transition-all duration-500 ${formData.communication ? 'bg-emerald-100 text-emerald-600 shadow-sm shadow-emerald-100 rotate-0' : 'bg-gray-200 text-gray-400 shadow-sm shadow-gray-100 -rotate-12'}`}>
+                                            {formData.communication ? <Phone className="w-5 h-5 animate-pulse" /> : <PhoneOff className="w-5 h-5" />}
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[15px] font-bold text-gray-900 tracking-tight">Direct Contact</h4>
+                                            <p className="text-[12px] leading-relaxed text-gray-500 mt-0.5 font-medium">
+                                                {formData.communication ? 'Client can directly contact the organisation' : 'No direct contact between client and organisation'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3.5">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest transition-colors duration-300 ${formData.communication ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                            {formData.communication ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData(prev => ({ ...prev, communication: !prev.communication }))}
+                                            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-500 focus:outline-none ring-offset-2 focus:ring-2 focus:ring-indigo-500/20 ${formData.communication ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30' : 'bg-gray-300'}`}
+                                        >
+                                            <span
+                                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform duration-500 ease-out ${formData.communication ? 'translate-x-6' : 'translate-x-1'}`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
                                 {/* Customer Details Fields */}
                                 <div>
                                     <label className="text-sm font-medium text-gray-700 block mb-1">
@@ -793,6 +826,8 @@ const AddDealModal = ({ isOpen = true, onClose, onSuccess, deal, initialData }) 
                                     </select>
                                     <ChevronDown className="absolute right-3 top-[38px] w-4 h-4 text-gray-400" />
                                 </div>
+
+
 
                                 {/* <div>
                                     <label className="text-sm font-medium text-gray-700 block mb-1">
