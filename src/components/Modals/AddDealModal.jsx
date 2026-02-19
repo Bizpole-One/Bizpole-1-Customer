@@ -166,7 +166,7 @@ const AddDealModal = ({ isOpen = true, onClose, onSuccess, deal, initialData }) 
                         selectedServices: initialData.selectedServices || [],
                     }));
                     setDealType(initialData.serviceType === "package" ? "Package" : "Individual");
-                    setStep(2); // Jump to service selection as data is pre-filled
+                    setStep(1); // Jump to service selection as data is pre-filled
                 } else {
                     console.log("Initializing modal for fresh create (no initialData)");
                     setFormData({

@@ -39,10 +39,9 @@ const AssociateDeals = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Initialize state directly from URL to prevent flicker and race conditions
-    const initialDealData = getDealDataFromParams(location.search);
-    const [isModalOpen, setIsModalOpen] = useState(!!initialDealData);
-    const [preFilledData, setPreFilledData] = useState(initialDealData);
+    // Initialize state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [preFilledData, setPreFilledData] = useState(null);
 
 
     const [deals, setDeals] = useState([]);
@@ -59,34 +58,22 @@ const AssociateDeals = () => {
     const [companyNames, setCompanyNames] = useState({});
     const [existingQuoteDealIds, setExistingQuoteDealIds] = useState([]);
 
-    console.log({ initialDealData });
-    console.log({});
-
-    useEffect(() => {
-        console.log("isModalOpen", isModalOpen);
-    }, [isModalOpen]);
 
 
-    // Sync effect to handle URL changes (e.g. clicking create deal while already on deals page)
+    // useEffect(() => {
+    //     console.log("isModalOpen", isModalOpen);
+    // }, [isModalOpen]);
+
+
+    // Single robust effect to handle URL changes and initial load
     useEffect(() => {
         const dealData = getDealDataFromParams(location.search);
-        console.log("dealData", dealData);
         if (dealData) {
-            console.log("set pre filled data");
+            // Only update if data is different or modal is closed
             setPreFilledData(dealData);
             setIsModalOpen(true);
         }
     }, [location.search]);
-
-    // Protective sync: If URL says create=true but modal is closed, force it open
-    // This handles edge cases where other state updates might have closed it prematurely
-    // useEffect(() => {
-    //     if (!isModalOpen && getDealDataFromParams(location.search)) {
-
-    //         console.log("force open modal");
-    //         setIsModalOpen(true);
-    //     }
-    // }, [isModalOpen, location.search]);
 
 
     useEffect(() => {
