@@ -51,18 +51,10 @@ const AssociateDeals = () => {
     const [creatingQuote, setCreatingQuote] = useState(null); // Track which deal is being converted
     const [editingDeal, setEditingDeal] = useState(null); // Track which deal is being edited
     const [deletingDeal, setDeletingDeal] = useState(null); // Track which deal is being deleted
-
-
-
-
     const [companyNames, setCompanyNames] = useState({});
     const [existingQuoteDealIds, setExistingQuoteDealIds] = useState([]);
 
 
-
-    // useEffect(() => {
-    //     console.log("isModalOpen", isModalOpen);
-    // }, [isModalOpen]);
 
 
     // Single robust effect to handle URL changes and initial load

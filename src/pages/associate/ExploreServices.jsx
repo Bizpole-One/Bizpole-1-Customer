@@ -52,8 +52,6 @@ function ServiceModal({ service, onClose }) {
             type: "individual"
         });
 
-        // Use window.location.href to force a full refresh and ensure query params are correctly processed, 
-        // resolving the issue where the modal wouldn't open automatically on standard navigation.
         window.location.href = `/associate/deals?${queryParams.toString()}`;
     };
 
