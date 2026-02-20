@@ -60,6 +60,11 @@ import AssociateCompanies from "./pages/associate/AssociateCompanies";
 import DealDetailView from "./pages/associate/DealDetailView";
 import CustomerDetailView from "./pages/associate/CustomerDetailView";
 import CompanyDetailView from "./pages/associate/CompanyDetailView";
+import OrderDetailView from "./pages/associate/OrderDetailView";
+import ServiceDetailView from "./pages/associate/ServiceDetailView";
+import AssociateReceipts from "./pages/associate/AssociateReceipts";
+import AssociateInvoices from "./pages/associate/AssociateInvoices";
+import ExploreServices from "./pages/associate/ExploreServices";
 
 function App() {
   const location = useLocation();
@@ -163,11 +168,16 @@ function App() {
               <Route path="deals/:id" element={<DealDetailView />} />
               <Route path="quotes" element={<AssociateQuotes />} />
               <Route path="orders" element={<AssociateOrders />} />
+              <Route path="orders/:id" element={<OrderDetailView />} />
               <Route path="services" element={<AssociateServices />} />
+              <Route path="services/:id" element={<ServiceDetailView />} />
               <Route path="customers" element={<AssociateCustomers />} />
               <Route path="customers/:id" element={<CustomerDetailView />} />
               <Route path="companies" element={<AssociateCompanies />} />
               <Route path="companies/:id" element={<CompanyDetailView />} />
+              <Route path="receipts" element={<AssociateReceipts />} />
+              <Route path="invoices" element={<AssociateInvoices />} />
+              <Route path="explore-services" element={<ExploreServices />} />
             </Route>
           </Route>
         </Routes>

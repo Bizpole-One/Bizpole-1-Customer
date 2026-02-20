@@ -1,22 +1,101 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AddDealModal from '../../components/Modals/AddDealModal';
 import { Plus, Edit2, Trash2, Search, Filter, Loader2, MoreVertical, ExternalLink } from 'lucide-react';
 import DealsApi from '../../api/DealsApi';
 import { getSecureItem } from '../../utils/secureStorage';
 import { format } from 'date-fns';
+import axiosInstance from '../../api/axiosInstance';
 import { upsertQuote } from '../../api/Quote';
+
+const getDealDataFromParams = (search) => {
+    try {
+        const params = new URLSearchParams(search);
+        if (params.get("create") === "true") {
+
+            console.log({ params });
+
+            console.log({
+                serviceState: params.get("state") || "",
+                serviceCategory: params.get("category") || "",
+                selectedServices: params.get("serviceId") ? [params.get("serviceId")] : [],
+                serviceType: params.get("type") || "individual"
+            });
+
+            return {
+                serviceState: params.get("state") || "",
+                serviceCategory: params.get("category") || "",
+                selectedServices: params.get("serviceId") ? [params.get("serviceId")] : [],
+                serviceType: params.get("type") || "individual"
+            };
+        }
+    } catch (e) {
+        console.error("Error parsing params", e);
+    }
+    return null;
+};
 
 const AssociateDeals = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Initialize state
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [preFilledData, setPreFilledData] = useState(null);
+
+
     const [deals, setDeals] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [creatingQuote, setCreatingQuote] = useState(null); // Track which deal is being converted
+    const [editingDeal, setEditingDeal] = useState(null); // Track which deal is being edited
+    const [deletingDeal, setDeletingDeal] = useState(null); // Track which deal is being deleted
+    const [companyNames, setCompanyNames] = useState({});
+    const [existingQuoteDealIds, setExistingQuoteDealIds] = useState([]);
+
+
+
+
+    // Single robust effect to handle URL changes and initial load
+    useEffect(() => {
+        const dealData = getDealDataFromParams(location.search);
+        if (dealData) {
+            // Only update if data is different or modal is closed
+            setPreFilledData(dealData);
+            setIsModalOpen(true);
+        }
+    }, [location.search]);
+
+
+    useEffect(() => {
+        fetchDeals();
+    }, []);
+
+
+    const fetchCompanyNames = async (dealsList) => {
+        const uniqueCompanyIds = [...new Set(dealsList.map(d => d.CompanyID).filter(id => id && !companyNames[id]))];
+
+        for (const id of uniqueCompanyIds) {
+            try {
+                const response = await DealsApi.getCompanyDetails(id);
+                if (response.success && response.data) {
+                    setCompanyNames(prev => ({
+                        ...prev,
+                        [id]: response.data.BusinessName
+                    }));
+                }
+            } catch (err) {
+                console.error(`Error fetching company name for ${id}`, err);
+            }
+        }
+    };
 
     console.log("deals", deals);
+
+    ;
+
+
 
     const fetchDeals = async () => {
         setLoading(true);
@@ -28,8 +107,20 @@ const AssociateDeals = () => {
                 isAssociate: true, // Filter specifically for associate created deals
                 AssociateID: user.id || null
             });
+
+            // Fetch quotes to check for existing quotes
+            const AssociateID = user.id || localStorage.getItem("AssociateID");
+            const quotesResponse = await axiosInstance.post('/getLatestQuotes', {
+                AssociateID: AssociateID,
+                isAssociate: true
+            });
+            const quoteDealIds = (quotesResponse.data?.data || []).map(q => q.DealID).filter(Boolean);
+            setExistingQuoteDealIds(quoteDealIds);
+
             if (result.success) {
-                setDeals(result.data || []);
+                const dealsData = result.data || [];
+                setDeals(dealsData);
+                fetchCompanyNames(dealsData);
             } else {
                 setError(result.message || "Failed to fetch deals");
             }
@@ -39,84 +130,64 @@ const AssociateDeals = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    useEffect(() => {
-        fetchDeals();
-    }, []);
+    }
 
     const handleDealSuccess = () => {
         fetchDeals();
+        setEditingDeal(null);
+    };
+
+    const handleEdit = (deal) => {
+        setEditingDeal(deal);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (deal) => {
+        if (window.confirm(`Are you sure you want to delete deal "${deal.name}"?`)) {
+            try {
+                const result = await DealsApi.deleteDeal(deal.id);
+                if (result.success) {
+                    fetchDeals();
+                } else {
+                    alert(result.message || "Failed to delete deal");
+                }
+            } catch (err) {
+                console.error("Delete deal error", err);
+                alert("An error occurred while deleting the deal");
+            }
+        }
     };
 
     const handleCreateQuote = async (deal) => {
         setCreatingQuote(deal.id);
         try {
+            const result = await DealsApi.requestQuote(deal.id);
 
-            console.log("deal", deal);
-
-            const user = getSecureItem("user") || {};
-            const AssociateID = localStorage.getItem("AssociateID");
-            const token = localStorage.getItem("partnerToken"); // Use partner token
-            if (!token) {
-                console.error("Partner token is missing. Authorization failed.");
-                return;
-            }
-
-            // Transform deal data into quote payload format
-            const quotePayload = {
-                id: null, // For new quote creation
-                packageId: null, // Deals may not have packages
-                PackageName: null,
-                name: deal.name,
-                isAssociate: 1,
-                AssociateID: parseInt(AssociateID),
-                SelectedCompany: {
-                    CompanyID: deal.CompanyID || 1,
-                    CompanyName: deal.CompanyName || "Default Company"
-                },
-                services: deal.DealServices?.map(service => {
-                    console.log('service from deal:', service);
-                    return {
-                        ServiceID: service.ServiceID,
-                        ServiceName: service.ServiceName || service.name,
-                        ProfessionalFee: service.ProfessionalFee || 0,
-                        VendorFee: service.VendorFee || 0,
-                        ContractFee: service.ContractFee || 0,
-                        GovernmentFee: service.GovernmentFee || service.GovtFee || 0,
-                        TotalFee: service.TotalFee || service.Total || 0,
-                        StateID: service.StateID || null,
-                        StateName: service.StateName || null
-                    };
-                }) || [],
-            };
-
-            console.log("BBBBB", { quotePayload });
-
-
-            const result = await upsertQuote(quotePayload);
-
-            if (result) {
-                alert(`Quote created successfully! Quote Code: ${result.QuoteCode || 'Generated'}`);
-                navigate('/associate/quotes');
+            if (result.success) {
+                // Update local state to reflect the change
+                setDeals(prev => prev.map(d =>
+                    d.id === deal.id ? { ...d, associate_request: 1 } : d
+                ));
+            } else {
+                alert('Failed to request quote: ' + (result.message || 'Unknown error'));
             }
         } catch (err) {
-            console.error('Error creating quote from deal:', err);
-            alert('Failed to create quote. Please try again.');
+            console.error('Error requesting quote from deal:', err);
+            alert('Failed to request quote. Please try again.');
         } finally {
             setCreatingQuote(null);
         }
     };
 
-    const getStatusColor = (status) => {
-        const s = status?.toLowerCase() || '';
-        if (s.includes('hot')) return 'bg-orange-50 text-orange-600 border-orange-200';
-        if (s.includes('won')) return 'bg-green-50 text-green-600 border-green-200';
-        if (s.includes('warm')) return 'bg-blue-50 text-blue-600 border-blue-200';
-        if (s.includes('cold')) return 'bg-gray-50 text-gray-600 border-gray-200';
-        if (s.includes('overdue')) return 'bg-red-50 text-red-600 border-red-200';
-        return 'bg-slate-50 text-slate-600 border-slate-200';
-    };
+    // const getStatusColor = (status) => {
+    //     const s = status?.toLowerCase() || '';
+    //     if (s.includes('hot')) return 'bg-orange-50 text-orange-600 border-orange-200';
+    //     if (s.includes('won')) return 'bg-green-50 text-green-600 border-green-200';
+    //     if (s.includes('warm')) return 'bg-blue-50 text-blue-600 border-blue-200';
+    //     if (s.includes('cold')) return 'bg-gray-50 text-gray-600 border-gray-200';
+    //     if (s.includes('overdue')) return 'bg-red-50 text-red-600 border-red-200';
+    //     return 'bg-slate-50 text-slate-600 border-slate-200';
+    // };
 
     return (
         <div className="p-6 space-y-6 bg-slate-50/50 min-h-screen">
@@ -163,10 +234,12 @@ const AssociateDeals = () => {
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">S.No</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ID</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deal Name</th>
-                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                {/* <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th> */}
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Company</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Closure Date</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Services</th>
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Service Category</th>
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deal Type</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Mobile</th>
                                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
                             </tr>
@@ -235,14 +308,14 @@ const AssociateDeals = () => {
                                                 </div>
                                             </td>
 
-                                            <td className="px-6 py-4">
+                                            {/* <td className="px-6 py-4">
                                                 <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${getStatusColor(deal.status)}`}>
                                                     {deal.status}
                                                 </span>
-                                            </td>
+                                            </td> */}
 
                                             <td className="px-6 py-4 text-sm text-slate-600">
-                                                {deal.CompanyName || "--"}
+                                                {companyNames[deal.CompanyID] || deal.CompanyName || "--"}
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-slate-600">
@@ -252,7 +325,33 @@ const AssociateDeals = () => {
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-slate-600 max-w-[200px] truncate">
-                                                {deal.serviceName || "--"}
+                                                {deal.packageName ? (
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-[#4b49ac] text-[12px]">
+                                                            {deal.packageName}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {deal.serviceNames || "--"}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    deal.serviceNames || deal.serviceName || "--"
+                                                )}
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm text-slate-600">
+                                                {deal.serviceCategory || "--"}
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm text-slate-600">
+                                                <span
+                                                    className={`px-2 py-0.5 rounded text-[10px] font-medium ${deal.isIndividual === 1
+                                                        ? "bg-blue-50 text-blue-600 border border-blue-100"
+                                                        : "bg-purple-50 text-purple-600 border border-purple-100"
+                                                        }`}
+                                                >
+                                                    {deal.isIndividual === 1 ? "Individual" : "Package"}
+                                                </span>
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-slate-500 font-mono tracking-tighter">
@@ -262,26 +361,37 @@ const AssociateDeals = () => {
                                             {/* ACTION COLUMN */}
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => handleCreateQuote(deal)}
-                                                        disabled={creatingQuote === deal.id}
-                                                        className="bg-amber-100 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-200 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                                                    >
-                                                        {creatingQuote === deal.id ? (
-                                                            <>
-                                                                <Loader2 className="w-3 h-3 animate-spin" />
-                                                                Creating...
-                                                            </>
-                                                        ) : (
-                                                            "Create Quote"
-                                                        )}
-                                                    </button>
+                                                    {!existingQuoteDealIds.includes(deal.id) && (
+                                                        <button
+                                                            onClick={() => handleCreateQuote(deal)}
+                                                            disabled={creatingQuote === deal.id || deal.associate_request === 1}
+                                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-1.5 ${deal.associate_request === 1
+                                                                ? "bg-slate-100 text-slate-500"
+                                                                : "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                                                                }`}
+                                                        >
+                                                            {creatingQuote === deal.id ? (
+                                                                <>
+                                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                                    Requesting...
+                                                                </>
+                                                            ) : (
+                                                                deal.associate_request === 1 ? "Requested" : "Request Quote"
+                                                            )}
+                                                        </button>
+                                                    )}
 
-                                                    <button className="p-2 text-slate-400 hover:text-[#4b49ac] hover:bg-slate-100 rounded-lg transition-all">
+                                                    <button
+                                                        onClick={() => handleEdit(deal)}
+                                                        className="p-2 text-slate-400 hover:text-[#4b49ac] hover:bg-slate-100 rounded-lg transition-all"
+                                                    >
                                                         <Edit2 className="w-4 h-4" />
                                                     </button>
 
-                                                    <button className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                                    <button
+                                                        onClick={() => handleDelete(deal)}
+                                                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
@@ -321,8 +431,16 @@ const AssociateDeals = () => {
 
             <AddDealModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingDeal(null);
+                    setPreFilledData(null);
+                    // Remove query params from URL
+                    navigate("/associate/deals", { replace: true });
+                }}
                 onSuccess={handleDealSuccess}
+                deal={editingDeal}
+                initialData={preFilledData}
             />
         </div>
     );

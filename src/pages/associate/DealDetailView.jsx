@@ -31,6 +31,8 @@ const DealDetailView = () => {
             try {
                 const response = await DealsApi.getDealById(id);
                 if (response.success) {
+                    console.log("VVVV",response.data);
+                    
                     setDeal(response.data);
                 } else {
                     setError(response.message || "Failed to fetch deal details");
@@ -250,7 +252,7 @@ const DealDetailView = () => {
                                     <th className="pb-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Service Name</th>
                                     <th className="pb-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Category</th>
                                     <th className="pb-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Type</th>
-                                    <th className="pb-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Fee</th>
+                                    {/* <th className="pb-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Fee</th> */}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -259,9 +261,9 @@ const DealDetailView = () => {
                                         <td className="py-4 text-sm font-medium text-slate-700">{service.serviceName || "--"}</td>
                                         <td className="py-4 text-sm text-slate-600">{service.serviceCategory || "--"}</td>
                                         <td className="py-4 text-sm text-slate-600">{service.dealType || "--"}</td>
-                                        <td className="py-4 text-sm font-bold text-slate-900 text-right">
+                                        {/* <td className="py-4 text-sm font-bold text-slate-900 text-right">
                                             {service.total ? `₹${Number(service.total).toLocaleString('en-IN')}` : "--"}
-                                        </td>
+                                        </td> */}
                                     </tr>
                                 ))}
                             </tbody>
